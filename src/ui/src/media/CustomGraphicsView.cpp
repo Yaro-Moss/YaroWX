@@ -1,4 +1,4 @@
-#include "Customgraphicsview.h"
+#include "CustomGraphicsView.h"
 #include <QMouseEvent>
 #include <QGraphicsPixmapItem>
 #include <QScrollBar>

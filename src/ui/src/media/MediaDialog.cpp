@@ -1,6 +1,6 @@
 #include "MediaDialog.h"
 #include "ui_MediaDialog.h"
-#include "customgraphicsview.h"
+#include "CustomGraphicsView.h"
 #include <QPainter>
 #include <QMouseEvent>
 #include <QGraphicsDropShadowEffect>

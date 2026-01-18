@@ -1,5 +1,5 @@
-#include "moredialog.h"
-#include "ui_moredialog.h"
+#include "MoreDialog.h"
+#include "ui_MoreDialog.h"
 
 MoreDialog::MoreDialog(QWidget *parent)
     : ClickClosePopup(parent)

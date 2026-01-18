@@ -1,6 +1,6 @@
 #include "ChatMessagesModel.h"
 #include <QDebug>
-#include "formatTime.h"
+#include "FormatTime.h"
 
 ChatMessagesModel::ChatMessagesModel(QObject *parent)
     : QAbstractListModel(parent)

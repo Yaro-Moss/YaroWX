@@ -1,4 +1,4 @@
-#include "imglabel.h"
+#include "ImgLabel.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QDebug>

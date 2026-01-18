@@ -5,7 +5,7 @@
 #include <QPainterPath>
 #include <QAbstractItemView>
 #include <QSize>
-#include "formatTime.h"
+#include "FormatTime.h"
 
 ChatListDelegate::ChatListDelegate(QObject *parent) 
     : QStyledItemDelegate(parent)

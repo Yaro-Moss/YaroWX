@@ -1,4 +1,4 @@
-#include "Videoplayer.h"
+#include "VideoPlayer.h"
 #include <QStyle>
 #include <QTime>
 #include <QUrl>

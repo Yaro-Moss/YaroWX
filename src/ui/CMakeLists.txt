@@ -84,13 +84,13 @@ elseif(WIN32)
     )
 endif()
 
-# 安装配置
-include(GNUInstallDirs)
-install(TARGETS myWeChat
-    BUNDLE DESTINATION .
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
+# # 安装配置
+# include(GNUInstallDirs)
+# install(TARGETS myWeChat
+#     BUNDLE DESTINATION .
+#     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+# )
 
 
 

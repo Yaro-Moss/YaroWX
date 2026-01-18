@@ -9,7 +9,7 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QCoreApplication>
-#include <QRegExp>
+#include <QRegularExpression> 
 
 VideoProcessingTask::VideoProcessingTask(const qint64 conversationId,
                                          const QString &sourceVideoPath,
@@ -112,7 +112,7 @@ static QString findFfmpegInEnvironment()
     if (findProc.waitForFinished(1000) && findProc.exitCode() == 0) {
         QString output = findProc.readAllStandardOutput().trimmed();
         // 处理可能的多行输出（Windows where可能返回多个路径）
-        QStringList paths = output.split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
+        QStringList paths = output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts);
         if (!paths.isEmpty()) {
             QString validPath = paths.first();
             if (QFile::exists(validPath)) {
@@ -171,7 +171,6 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
 
     // 3. 最终检查
     if (ffmpegPath.isEmpty() || !QFile::exists(ffmpegPath)) {
-        // 修改提示信息，包含环境变量的查找
         qDebug() << "FFmpeg不存在！已查找路径：程序目录、上层3层目录、系统环境变量";
         m_errorMessage = QString("FFmpeg工具缺失，请检查thirdparty目录是否有对应平台的FFmpeg文件，或确保FFmpeg已加入系统环境变量");
         return false;
@@ -192,7 +191,6 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
 
     ffmpegProcess.start(ffmpegPath, arguments);
 
-    // 以下逻辑完全保留
     if (!ffmpegProcess.waitForFinished(30000)) {
         qDebug() << "FFmpeg处理超时或失败:" << ffmpegProcess.errorString();
         return false;

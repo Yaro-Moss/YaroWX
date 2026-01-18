@@ -2,9 +2,9 @@
 #define USERINFOWIDGET_H
 
 #include "Contact.h"
-#include "imglabel.h"
+#include "ImgLabel.h"
 #include <QWidget>
-#include <qpushbutton.h>
+#include <QPushButton>
 
 namespace Ui {
 class UserInfoWidget;

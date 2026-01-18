@@ -20,7 +20,7 @@ target_include_directories(controller PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include/databaseInitializationController
     ${CMAKE_CURRENT_SOURCE_DIR}/include/userController
     ${CMAKE_CURRENT_SOURCE_DIR}/include/contactController
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/GroupController
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/groupController
     ${CMAKE_CURRENT_SOURCE_DIR}/../storage/include
 )
 

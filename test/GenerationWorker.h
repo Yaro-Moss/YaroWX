@@ -4,7 +4,7 @@
 #include <QObject>
 #include <QThread>
 #include <QMutex>
-#include "DoubaoAI.h"
+#include "DoubaoAi.h"
 #include "User.h"
 #include "Contact.h"
 #include "Message.h"

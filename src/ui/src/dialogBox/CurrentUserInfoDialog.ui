@@ -407,7 +407,7 @@ font: 11pt &quot;等线&quot;;
   <customwidget>
    <class>ImgLabel</class>
    <extends>QLabel</extends>
-   <header>imglabel.h</header>
+   <header>ImgLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

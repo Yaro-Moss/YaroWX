@@ -979,7 +979,7 @@ border-top: 1px solid #cccccc; /* 边框宽度+颜色+线型 */
   <customwidget>
    <class>ImgLabel</class>
    <extends>QLabel</extends>
-   <header>imglabel.h</header>
+   <header>ImgLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

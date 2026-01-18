@@ -1,5 +1,5 @@
-#include "rightpopover.h"
-#include "ui_rightpopover.h"
+#include "RightPopover.h"
+#include "ui_RightPopover.h"
 #include<QDebug>
 #include <QMouseEvent>
 
