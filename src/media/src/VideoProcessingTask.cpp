@@ -8,6 +8,8 @@
 #include <QImage>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QCoreApplication>
+#include <QRegExp>
 
 VideoProcessingTask::VideoProcessingTask(const qint64 conversationId,
                                          const QString &sourceVideoPath,
@@ -92,6 +94,50 @@ bool VideoProcessingTask::copyVideoFile(const QString &sourcePath, const QString
     return QFile::copy(sourcePath, destPath);
 }
 
+// 查找环境变量中的FFmpeg路径（跨平台）
+static QString findFfmpegInEnvironment()
+{
+    // 使用系统命令查找可执行文件路径
+#ifdef Q_OS_WIN
+    // Windows使用where命令查找ffmpeg.exe
+    QStringList cmdArgs = {"where", "ffmpeg.exe"};
+#else
+    // Linux/macOS使用which命令查找ffmpeg
+    QStringList cmdArgs = {"which", "ffmpeg"};
+#endif
+
+    QProcess findProc;
+    findProc.start(cmdArgs.first(), cmdArgs.mid(1));
+    // 设置1秒超时，避免阻塞
+    if (findProc.waitForFinished(1000) && findProc.exitCode() == 0) {
+        QString output = findProc.readAllStandardOutput().trimmed();
+        // 处理可能的多行输出（Windows where可能返回多个路径）
+        QStringList paths = output.split(QRegExp("[\r\n]"), Qt::SkipEmptyParts);
+        if (!paths.isEmpty()) {
+            QString validPath = paths.first();
+            if (QFile::exists(validPath)) {
+                return validPath;
+            }
+        }
+    }
+
+    // 直接测试ffmpeg是否可执行（如果系统能找到，直接返回命令名）
+#ifdef Q_OS_WIN
+    QString ffmpegCmd = "ffmpeg.exe";
+#else
+    QString ffmpegCmd = "ffmpeg";
+#endif
+
+    QProcess testProc;
+    testProc.start(ffmpegCmd, {"-version"});
+    if (testProc.waitForFinished(1000) && testProc.exitCode() == 0) {
+        return ffmpegCmd; // 直接返回命令名，系统会从环境变量查找
+    }
+
+    // 环境变量中未找到
+    return QString();
+}
+
 bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const QString &thumbnailPath)
 {
     // ========== 查找FFmpeg路径 ==========
@@ -103,9 +149,8 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
     if (QFile::exists(localFfmpeg)) {
         ffmpegPath = localFfmpeg;
     } else {
-        // 2. 找不到则向上查找
+        // 2. 找不到则向上查找（最多3层）
         QDir dir(appDir);
-        // 最多向上找3层目录
         for (int i = 0; i < 3; ++i) {
             dir.cdUp();
             QString parentFfmpeg = QDir::cleanPath(dir.absolutePath() + "/" + FFMPEG_EXEC_NAME);
@@ -116,10 +161,19 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
         }
     }
 
+    // ========== 查找环境变量中的FFmpeg ==========
+    if (ffmpegPath.isEmpty()) {
+        ffmpegPath = findFfmpegInEnvironment();
+        if (!ffmpegPath.isEmpty()) {
+            qDebug() << "从系统环境变量找到FFmpeg：" << ffmpegPath;
+        }
+    }
+
     // 3. 最终检查
     if (ffmpegPath.isEmpty() || !QFile::exists(ffmpegPath)) {
-        qDebug() << "FFmpeg不存在！已查找路径：" << localFfmpeg << " 及上层目录";
-        m_errorMessage = QString("FFmpeg工具缺失，请检查thirdparty目录是否有对应平台的FFmpeg文件");
+        // 修改提示信息，包含环境变量的查找
+        qDebug() << "FFmpeg不存在！已查找路径：程序目录、上层3层目录、系统环境变量";
+        m_errorMessage = QString("FFmpeg工具缺失，请检查thirdparty目录是否有对应平台的FFmpeg文件，或确保FFmpeg已加入系统环境变量");
         return false;
     }
     qDebug() << "找到FFmpeg路径：" << ffmpegPath;
