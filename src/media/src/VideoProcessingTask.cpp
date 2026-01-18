@@ -94,23 +94,51 @@ bool VideoProcessingTask::copyVideoFile(const QString &sourcePath, const QString
 
 bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const QString &thumbnailPath)
 {
-    // 检查系统是否安装了FFmpeg
-    QProcess ffmpegProcess;
+    // ========== 查找FFmpeg路径 ==========
+    QString ffmpegPath;
+    QString appDir = QCoreApplication::applicationDirPath();
+    
+    // 1. 先检查程序运行目录
+    QString localFfmpeg = QDir::cleanPath(appDir + "/" + FFMPEG_EXEC_NAME);
+    if (QFile::exists(localFfmpeg)) {
+        ffmpegPath = localFfmpeg;
+    } else {
+        // 2. 找不到则向上查找
+        QDir dir(appDir);
+        // 最多向上找3层目录
+        for (int i = 0; i < 3; ++i) {
+            dir.cdUp();
+            QString parentFfmpeg = QDir::cleanPath(dir.absolutePath() + "/" + FFMPEG_EXEC_NAME);
+            if (QFile::exists(parentFfmpeg)) {
+                ffmpegPath = parentFfmpeg;
+                break;
+            }
+        }
+    }
 
-    // 使用FFmpeg提取视频第一帧作为缩略图
+    // 3. 最终检查
+    if (ffmpegPath.isEmpty() || !QFile::exists(ffmpegPath)) {
+        qDebug() << "FFmpeg不存在！已查找路径：" << localFfmpeg << " 及上层目录";
+        m_errorMessage = QString("FFmpeg工具缺失，请检查thirdparty目录是否有对应平台的FFmpeg文件");
+        return false;
+    }
+    qDebug() << "找到FFmpeg路径：" << ffmpegPath;
+    // ========== 路径查找结束 ==========
+
+    QProcess ffmpegProcess;
     QStringList arguments;
     arguments << "-i" << videoPath
-              << "-ss" << "00:00:01"  // 跳到第1秒，避免黑屏
-              << "-vframes" << "1"     // 只取一帧
+              << "-ss" << "00:00:01"
+              << "-vframes" << "1"
               << "-vf" << QString("scale=%1:%2:force_original_aspect_ratio=decrease")
                               .arg(m_thumbnailSize.width())
                               .arg(m_thumbnailSize.height())
-              << "-y"                  // 覆盖已存在文件
+              << "-y"
               << thumbnailPath;
 
-    ffmpegProcess.start("ffmpeg", arguments);
+    ffmpegProcess.start(ffmpegPath, arguments);
 
-    // 等待处理完成（最多30秒）
+    // 以下逻辑完全保留
     if (!ffmpegProcess.waitForFinished(30000)) {
         qDebug() << "FFmpeg处理超时或失败:" << ffmpegProcess.errorString();
         return false;
@@ -122,13 +150,11 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
         return false;
     }
 
-    // 检查缩略图是否成功生成
     if (!QFile::exists(thumbnailPath)) {
         qDebug() << "缩略图文件未生成";
         return false;
     }
 
-    // 验证生成的图片是否有效
     QImage thumbnail(thumbnailPath);
     if (thumbnail.isNull()) {
         qDebug() << "生成的缩略图无效";
