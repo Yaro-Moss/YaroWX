@@ -14,14 +14,32 @@ QT开发客户端，（目前还没做后端）。具备方式文本信息、图
 
 ## 测试截图
 ### 截图1
-![截图1描述（比如：功能主界面）](docs/testImage/1.png)
+![登录）](docs/testImage/1.png)
 
 ### 截图2
-![截图2描述（比如：数据展示页）](docs/testImage/2.png)
+![主聊天界面](docs/testImage/2.png)
 
 | 截图3 | 截图4 |
 |-------|-------|
-| ![截图3](docs/testImage/3.png) | ![截图4](docs/testImage/4.png) |
+| ![联系人](docs/testImage/3.png) | ![媒体播放器](docs/testImage/4.png) |
+
+### 截图5
+![](docs/testImage/5.png)
+
+### 截图6
+![](docs/testImage/6.png)
+
+### 截图7
+![](docs/testImage/7.png)
+
+### 截图8
+![](docs/testImage/9.png)
+
+### 截图9
+![](docs/testImage/10.png)
+
+
+
 
 ## 二、演示视频
 
