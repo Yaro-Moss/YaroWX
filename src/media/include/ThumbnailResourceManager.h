@@ -60,6 +60,8 @@ public:
     void setCacheSize(int maxSize);
     void cleanupOldResources(qint64 maxAgeMs = 3600000); // 清理长时间未使用的资源
 
+    static void addPlayButton(QPixmap& pixmap);// 添加播放按钮到视频缩略图
+    static void addTextIndicator(QPixmap& pixmap, const QString& text);    // 添加文字标识
 
 signals:
     void mediaLoaded(const QString& resourcePath, const QPixmap& media, MediaType type);
@@ -93,10 +95,6 @@ private:
     static QPixmap createDefaultThumbnail(const QSize& size, MediaType type, const QString& text = QString());
     static QPixmap createDefaultExpiredThumbnail(const QSize& size, const QString& mediaType);
     static QPixmap createExpiredThumbnail(const QPixmap& baseThumbnail, const QString& mediaType, const QSize size = QSize(200,300));
-
-
-    static void addPlayButton(QPixmap& pixmap);// 添加播放按钮到视频缩略图
-    static void addTextIndicator(QPixmap& pixmap, const QString& text);    // 添加文字标识
 
     QString generateCacheKey(const QString& path, const QSize& size, MediaType type, int radius, const QString& iconPath = QString()) const;
     int estimateCacheCost(const QPixmap& pixmap) const noexcept ;

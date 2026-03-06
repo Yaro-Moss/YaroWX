@@ -9,7 +9,17 @@
 #include <QProcess>
 #include <QStandardPaths>
 #include <QCoreApplication>
-#include <QRegularExpression> 
+#include <QRegularExpression>
+#include <QPixmap>
+#include <QByteArray>
+
+// 平台相关的 FFmpeg 可执行文件名
+#ifdef Q_OS_WIN
+#define FFMPEG_EXEC_NAME "ffmpeg.exe"
+#else
+#define FFMPEG_EXEC_NAME "ffmpeg"
+#endif
+
 
 VideoProcessingTask::VideoProcessingTask(const qint64 conversationId,
                                          const QString &sourceVideoPath,
@@ -94,24 +104,24 @@ bool VideoProcessingTask::copyVideoFile(const QString &sourcePath, const QString
     return QFile::copy(sourcePath, destPath);
 }
 
-// 查找环境变量中的FFmpeg路径（跨平台）
-static QString findFfmpegInEnvironment()
+
+/**
+ * @brief 查找环境变量中的 FFmpeg 路径（跨平台）
+ * @return FFmpeg 可执行文件的完整路径，若未找到则返回空字符串
+ */
+QString VideoProcessingTask::findFfmpegInEnvironment()
 {
     // 使用系统命令查找可执行文件路径
 #ifdef Q_OS_WIN
-    // Windows使用where命令查找ffmpeg.exe
     QStringList cmdArgs = {"where", "ffmpeg.exe"};
 #else
-    // Linux/macOS使用which命令查找ffmpeg
     QStringList cmdArgs = {"which", "ffmpeg"};
 #endif
 
     QProcess findProc;
     findProc.start(cmdArgs.first(), cmdArgs.mid(1));
-    // 设置1秒超时，避免阻塞
     if (findProc.waitForFinished(1000) && findProc.exitCode() == 0) {
         QString output = findProc.readAllStandardOutput().trimmed();
-        // 处理可能的多行输出（Windows where可能返回多个路径）
         QStringList paths = output.split(QRegularExpression("[\r\n]"), Qt::SkipEmptyParts);
         if (!paths.isEmpty()) {
             QString validPath = paths.first();
@@ -121,35 +131,43 @@ static QString findFfmpegInEnvironment()
         }
     }
 
-    // 直接测试ffmpeg是否可执行（如果系统能找到，直接返回命令名）
-#ifdef Q_OS_WIN
-    QString ffmpegCmd = "ffmpeg.exe";
-#else
-    QString ffmpegCmd = "ffmpeg";
-#endif
-
+    // 直接测试 ffmpeg 是否可执行（如果系统能找到，直接返回命令名）
     QProcess testProc;
-    testProc.start(ffmpegCmd, {"-version"});
+    testProc.start(FFMPEG_EXEC_NAME, {"-version"});
     if (testProc.waitForFinished(1000) && testProc.exitCode() == 0) {
-        return ffmpegCmd; // 直接返回命令名，系统会从环境变量查找
+        return FFMPEG_EXEC_NAME; // 直接返回命令名，系统会从环境变量查找
     }
 
-    // 环境变量中未找到
     return QString();
 }
 
-bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const QString &thumbnailPath)
+/**
+ * @brief 从视频文件中提取指定时间点的缩略图，返回 QPixmap 对象（不保存到磁盘）
+ * @param videoPath    源视频文件路径
+ * @param thumbnailSize 缩略图的目标尺寸（保持宽高比缩小至该尺寸内）
+ * @param errorMsg     可选输出参数，用于返回错误信息
+ * @return 生成的缩略图 QPixmap，失败则返回空 QPixmap
+ */
+QPixmap VideoProcessingTask::generateVideoThumbnail(const QString &videoPath,
+                                                    const QSize &thumbnailSize,
+                                                    QString *errorMsg)
 {
-    // ========== 查找FFmpeg路径 ==========
+    // 1. 检查源文件是否存在
+    if (!QFile::exists(videoPath)) {
+        if (errorMsg) *errorMsg = "源视频文件不存在";
+        return QPixmap();
+    }
+
+    // 2. 查找 FFmpeg 可执行文件
     QString ffmpegPath;
     QString appDir = QCoreApplication::applicationDirPath();
-    
-    // 1. 先检查程序运行目录
+
+    // 先检查程序运行目录
     QString localFfmpeg = QDir::cleanPath(appDir + "/" + FFMPEG_EXEC_NAME);
     if (QFile::exists(localFfmpeg)) {
         ffmpegPath = localFfmpeg;
     } else {
-        // 2. 找不到则向上查找（最多3层）
+        // 向上查找（最多3层）
         QDir dir(appDir);
         for (int i = 0; i < 3; ++i) {
             dir.cdUp();
@@ -161,56 +179,79 @@ bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const
         }
     }
 
-    // ========== 查找环境变量中的FFmpeg ==========
+    // 若未找到，则尝试环境变量
     if (ffmpegPath.isEmpty()) {
-        ffmpegPath = findFfmpegInEnvironment();
-        if (!ffmpegPath.isEmpty()) {
-            qDebug() << "从系统环境变量找到FFmpeg：" << ffmpegPath;
-        }
+        ffmpegPath = VideoProcessingTask::findFfmpegInEnvironment();
     }
 
-    // 3. 最终检查
     if (ffmpegPath.isEmpty() || !QFile::exists(ffmpegPath)) {
-        qDebug() << "FFmpeg不存在！已查找路径：程序目录、上层3层目录、系统环境变量";
-        m_errorMessage = QString("FFmpeg工具缺失，请检查thirdparty目录是否有对应平台的FFmpeg文件，或确保FFmpeg已加入系统环境变量");
-        return false;
+        if (errorMsg) *errorMsg = "FFmpeg 工具缺失，请检查程序目录或系统环境变量";
+        return QPixmap();
     }
-    qDebug() << "找到FFmpeg路径：" << ffmpegPath;
-    // ========== 路径查找结束 ==========
 
+    // 3. 构建 FFmpeg 命令参数，输出到 stdout（管道）
     QProcess ffmpegProcess;
     QStringList arguments;
-    arguments << "-i" << videoPath
-              << "-ss" << "00:00:01"
-              << "-vframes" << "1"
+    arguments << "-i" << videoPath               // 输入文件
+              << "-ss" << "00:00:02"              // 跳转到第1秒（可根据需要调整）
+              << "-vframes" << "1"                 // 只取一帧
               << "-vf" << QString("scale=%1:%2:force_original_aspect_ratio=decrease")
-                              .arg(m_thumbnailSize.width())
-                              .arg(m_thumbnailSize.height())
-              << "-y"
-              << thumbnailPath;
+                              .arg(thumbnailSize.width())
+                              .arg(thumbnailSize.height())  // 缩放滤镜
+              << "-f" << "image2pipe"              // 输出格式为管道图像流
+              << "-vcodec" << "mjpeg"               // 使用 MJPEG 编码（便于 Qt 直接加载）
+              << "-";                               // 输出到 stdout
 
-    ffmpegProcess.start(ffmpegPath, arguments);
+    // 4. 启动进程并读取数据
+    ffmpegProcess.start(ffmpegPath, arguments, QIODevice::ReadOnly);
+    if (!ffmpegProcess.waitForStarted()) {
+        if (errorMsg) *errorMsg = "FFmpeg 进程启动失败：" + ffmpegProcess.errorString();
+        return QPixmap();
+    }
 
-    if (!ffmpegProcess.waitForFinished(30000)) {
-        qDebug() << "FFmpeg处理超时或失败:" << ffmpegProcess.errorString();
-        return false;
+    // 等待进程结束，同时读取 stdout 数据
+    QByteArray imageData;
+    if (!ffmpegProcess.waitForFinished(30000)) { // 30秒超时
+        ffmpegProcess.kill();
+        if (errorMsg) *errorMsg = "FFmpeg 处理超时";
+        return QPixmap();
     }
 
     if (ffmpegProcess.exitCode() != 0) {
-        qDebug() << "FFmpeg处理失败，退出码:" << ffmpegProcess.exitCode();
-        qDebug() << "错误输出:" << ffmpegProcess.readAllStandardError();
+        QString err = ffmpegProcess.readAllStandardError();
+        if (errorMsg) *errorMsg = "FFmpeg 处理失败，错误信息：" + err;
+        return QPixmap();
+    }
+
+    imageData = ffmpegProcess.readAllStandardOutput();
+    if (imageData.isEmpty()) {
+        if (errorMsg) *errorMsg = "FFmpeg 未输出图像数据";
+        return QPixmap();
+    }
+
+    // 5. 将数据加载为 QImage 并转换为 QPixmap
+    QImage image;
+    if (!image.loadFromData(imageData, "JPEG")) { // 指定格式为 JPEG
+        if (errorMsg) *errorMsg = "无法从 FFmpeg 输出解析图像";
+        return QPixmap();
+    }
+
+    return QPixmap::fromImage(image);
+}
+
+bool VideoProcessingTask::generateVideoThumbnail(const QString &videoPath, const QString &thumbnailPath)
+{
+    // 调用静态函数获取缩略图
+    QString errorMsg;
+    QPixmap thumb = VideoProcessingTask::generateVideoThumbnail(videoPath, m_thumbnailSize, &errorMsg);
+    if (thumb.isNull()) {
+        m_errorMessage = errorMsg;
         return false;
     }
 
-    if (!QFile::exists(thumbnailPath)) {
-        qDebug() << "缩略图文件未生成";
-        return false;
-    }
-
-    QImage thumbnail(thumbnailPath);
-    if (thumbnail.isNull()) {
-        qDebug() << "生成的缩略图无效";
-        QFile::remove(thumbnailPath);
+    // 保存到文件
+    if (!thumb.save(thumbnailPath, "JPEG")) {
+        m_errorMessage = "缩略图保存失败";
         return false;
     }
 

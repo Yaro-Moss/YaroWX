@@ -1,10 +1,13 @@
 #include "UserInfoWidget.h"
 #include "ThumbnailResourceManager.h"
+#include "WeChatWidget.h"
 #include "ui_UserInfoWidget.h"
 
 UserInfoWidget::UserInfoWidget(QWidget *parent)
     : QWidget(parent)
     , ui(new Ui::UserInfoWidget)
+    , m_weChatWidget(nullptr)
+    , m_mediaDialog(nullptr)
 {
     ui->setupUi(this);
 
@@ -25,6 +28,10 @@ UserInfoWidget::~UserInfoWidget()
     delete ui;
 }
 
+void UserInfoWidget::setMediaDialog(MediaDialog* mediaDialog){
+    m_mediaDialog = mediaDialog;
+    avatarLabel->setMediaDialog(m_mediaDialog);
+}
 
 void UserInfoWidget::setSelectedContact(const Contact &contact)
 {
@@ -54,6 +61,9 @@ void UserInfoWidget::setSelectedContact(const Contact &contact)
 
 void UserInfoWidget::on_switchMessageInterfaceToolButton_clicked()
 {
-    emit switchtoMessageInterface(m_contact);
+    if(!m_weChatWidget)return;
+    m_weChatWidget->on_switchtoMessageInterface(m_contact);
+    m_weChatWidget->close();
+    m_weChatWidget->show();
 }
 

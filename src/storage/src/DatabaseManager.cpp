@@ -7,6 +7,7 @@
 #include "ConversationTable.h"
 #include "MessageTable.h"
 #include "MediaCacheTable.h"
+#include "LocalMomentTable.h"
 
 DatabaseManager::DatabaseManager(QObject* parent)
     : QObject(parent)
@@ -20,6 +21,7 @@ DatabaseManager::DatabaseManager(QObject* parent)
     m_conversationTable = new ConversationTable();
     m_messageTable = new MessageTable();
     m_mediaCacheTable = new MediaCacheTable();
+    m_localMomentTable = new LocalMomentTable();
 
     m_userTable->moveToThread(m_dbThread);
     m_contactTable->moveToThread(m_dbThread);
@@ -28,6 +30,7 @@ DatabaseManager::DatabaseManager(QObject* parent)
     m_conversationTable->moveToThread(m_dbThread);
     m_messageTable->moveToThread(m_dbThread);
     m_mediaCacheTable->moveToThread(m_dbThread);
+    m_localMomentTable->moveToThread(m_dbThread);
 
     connect(m_dbThread, &QThread::started, m_userTable, &UserTable::init);
     connect(m_dbThread, &QThread::started, m_contactTable, &ContactTable::init);
@@ -36,11 +39,20 @@ DatabaseManager::DatabaseManager(QObject* parent)
     connect(m_dbThread, &QThread::started, m_conversationTable, &ConversationTable::init);
     connect(m_dbThread, &QThread::started, m_messageTable, &MessageTable::init);
     connect(m_dbThread, &QThread::started, m_mediaCacheTable, &MediaCacheTable::init);
+    connect(m_dbThread, &QThread::started, m_localMomentTable, &LocalMomentTable::init);
 }
 
 DatabaseManager::~DatabaseManager()
 {
     stop();
+    m_userTable->deleteLater();
+    m_contactTable->deleteLater();
+    m_groupTable->deleteLater();
+    m_groupMemberTable->deleteLater();
+    m_conversationTable->deleteLater();
+    m_messageTable->deleteLater();
+    m_mediaCacheTable->deleteLater();
+    m_localMomentTable->deleteLater();
 }
 
 void DatabaseManager::start()

@@ -447,20 +447,17 @@ void VideoPlayer::hideVolumePopup()
 void VideoPlayer::loadVideo(const QString &path)
 {
     videoUrl = path;
-
-    // 判断是本地文件还是网络URL
     if (path.startsWith("http://") || path.startsWith("https://")) {
         m_player->setSource(QUrl(path));
     } else {
         m_player->setSource(QUrl::fromLocalFile(videoUrl));
-        qDebug()<<"播放地址"<<videoUrl;
     }
-    if (m_videoWidget) {
-        m_videoWidget->update();
-        m_videoWidget->repaint();
-    }
-}
 
+    // 强制触发窗口刷新（临时改变大小再恢复）
+    QSize oldSize = this->size();
+    resize(oldSize + QSize(1, 1));
+    resize(oldSize);                // 恢复原大小
+}
 
 void VideoPlayer::stop()
 {

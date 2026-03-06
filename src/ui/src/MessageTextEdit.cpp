@@ -22,6 +22,7 @@ MessageTextEdit::~MessageTextEdit()
 {
 }
 
+
 void MessageTextEdit::insertFile(const QString &filePath)
 {
     QFileInfo fileInfo(filePath);
@@ -50,7 +51,7 @@ void MessageTextEdit::insertFile(const QString &filePath)
 
 void MessageTextEdit::insertFiles(const QStringList &filePaths)
 {
-    for (const QString &filePath : filePaths) {
+    for (const QString &filePath : std::as_const(filePaths)) {
         insertFile(filePath);
     }
 }
@@ -329,5 +330,3 @@ void MessageTextEdit::insertFileToDocument(const FileItem &fileItem)
 
     setTextCursor(cursor);
 }
-
-

@@ -27,6 +27,13 @@ public:
     void sendMsg(QVector<Message> messages);
     QString buildPrompt(const QVector<Message> &messages);
 
+    // 生成单个用户
+    User generateSingleUser();
+
+    // 生成联系人信息
+    Contact generateContactForUser(const User& user);
+
+
 public slots:
     // 生成非好友用户
     void generateNonFriends(int count);
@@ -55,11 +62,6 @@ signals:
     // 响应消息
     void reaction(Message msg);
 private:
-    // 生成单个用户
-    User generateSingleUser();
-
-    // 生成联系人信息
-    Contact generateContactForUser(const User& user);
 
     // 生成随机数据函数
     QString generateRandomNickname();

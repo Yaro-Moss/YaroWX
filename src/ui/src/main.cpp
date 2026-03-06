@@ -49,6 +49,13 @@ int main(int argc, char *argv[])
     qRegisterMetaType<User>("User");
     qRegisterMetaType<QList<User>>("QList<User>");
 
+    qRegisterMetaType<LocalMoment>("LocalMoment");
+    qRegisterMetaType<QHash<qlonglong, LocalMoment>>("QHash<qlonglong, LocalMoment>");
+    qRegisterMetaType<QVector<LocalMoment>>("QVector<LocalMoment>");
+    qRegisterMetaType<LocalMomentInteract>("LocalMomentInteract");
+    qRegisterMetaType<MomentLikeInfo>("MomentLikeInfo");
+    qRegisterMetaType<MomentCommentInfo>("MomentCommentInfo");
+
     LoginAndRegisterController loginAndRegisterController;
     LoginAndRegisterDialog loginAndRegisterDialog(&loginAndRegisterController);
     if(loginAndRegisterDialog.exec() == QDialog::Accepted){

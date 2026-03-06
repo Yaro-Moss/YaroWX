@@ -24,6 +24,7 @@ public:
 
     void getCurrentUser();
     void getContact(int reqId, qint64 userId);
+    Contact getContactFromModel(qint64 userId);
     void getAllContacts(int reqId);
     void searchContacts(int reqId, const QString& keyword);
     void getStarredContacts(int reqId);

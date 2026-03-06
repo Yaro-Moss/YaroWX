@@ -79,7 +79,7 @@
        <number>11</number>
       </property>
       <item>
-       <widget class="QPushButton" name="avatarPushButton">
+       <widget class="AvatarButton" name="avatarPushButton">
         <property name="enabled">
          <bool>true</bool>
         </property>
@@ -275,7 +275,7 @@ QToolButton:disabled {
        </widget>
       </item>
       <item>
-       <widget class="QToolButton" name="toolButton_2">
+       <widget class="QToolButton" name="momentButton">
         <property name="minimumSize">
          <size>
           <width>40</width>
@@ -1954,6 +1954,11 @@ QPushButton:pressed {
    <extends>QWidget</extends>
    <header>UserInfoWidget.h</header>
    <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>AvatarButton</class>
+   <extends>QPushButton</extends>
+   <header>AvatarButton.h</header>
   </customwidget>
  </customwidgets>
  <resources>

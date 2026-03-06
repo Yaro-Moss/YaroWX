@@ -10,7 +10,7 @@
 #include "User.h"
 
 struct Contact {
-    qint64 userId = 0;
+    qint64 userId = -1;
     QString remarkName;
     QString description;
     QJsonArray tags;

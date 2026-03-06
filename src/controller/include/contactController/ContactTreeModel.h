@@ -20,6 +20,7 @@ public:
     bool isContactNode(const QModelIndex &index) const;
 
     QModelIndex findContactIndex(qint64 userId) const;
+    Contact getContactById(qint64 userId) const;
 
 private:
     QStandardItem *m_newFriendItem;

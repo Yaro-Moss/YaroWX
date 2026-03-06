@@ -9,6 +9,8 @@ const char* DatabaseSchema::TABLE_GROUPS = "groups";
 const char* DatabaseSchema::TABLE_CONVERSATIONS = "conversations";
 const char* DatabaseSchema::TABLE_MESSAGES = "messages";
 const char* DatabaseSchema::TABLE_MEDIA_CACHE = "media_cache";
+const char* DatabaseSchema::TABLE_LOCAL_MOMENT = "local_moment";          
+const char* DatabaseSchema::TABLE_LOCAL_MOMENT_INTERACT = "local_moment_interact"; 
 
 /**
  * @brief 获取创建"用户表"的SQL语句
@@ -21,6 +23,7 @@ QString DatabaseSchema::getCreateTableUser() {
             nickname TEXT NOT NULL,                  -- 用户昵称
             avatar TEXT,                             -- 头像远程URL
             avatar_local_path TEXT,                  -- 头像本地缓存路径
+            profile_cover TEXT,                      -- 朋友圈封面
             gender INTEGER DEFAULT 0,                -- 性别（0:未知 1:男 2:女）
             region TEXT,                             -- 地区（如"中国-北京"）
             signature TEXT,                          -- 个性签名
@@ -143,7 +146,7 @@ QString DatabaseSchema::getCreateTableMessages() {
 
             -- 外键关联
             FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE,
-            FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE RESTRICT
+            FOREIGN KEY (sender_id) REFERENCES users(user_id) ON DELETE RESTRICT,
             FOREIGN KEY (consignee_id) REFERENCES users(user_id) ON DELETE RESTRICT
         )
     )";
@@ -167,7 +170,62 @@ QString DatabaseSchema::getCreateTableMediaCache() {
     )";
 }
 
+/**
+ * @brief 获取创建朋友圈主表的SQL语句
+ * 缓存朋友圈核心信息，合并服务端moment+moment_image逻辑，新增本地缓存字段
+ */
+QString DatabaseSchema::getCreateTableLocalMoment() {
+    return R"(
+        CREATE TABLE IF NOT EXISTS local_moment (
+            moment_id INTEGER NOT NULL PRIMARY KEY,      -- 服务端朋友圈唯一ID（主键，用于同步）
+            user_id INTEGER NOT NULL,                    -- 发布者ID
+            username TEXT NOT NULL,                      -- 发布者昵称（本地缓存）
+            avatar_local_path TEXT,                      -- 发布者头像本地路径
+            avatar_url TEXT,                             -- 发布者头像网络URL
+            content TEXT DEFAULT '',                     -- 文本内容
 
+            -- 视频相关（与图片互斥）
+            video_local_path TEXT DEFAULT '',            -- 视频本地存储路径
+            video_url TEXT DEFAULT '',                   -- 视频网络URL
+            video_download_status INTEGER DEFAULT 0,     -- 视频下载状态：0-未下载 1-下载中 2-已下载 3-下载失败
+
+            -- 图片相关：JSON字符串存储[{"url":"xxx","local_path":"xxx","download_status":0},...]
+            images_info TEXT DEFAULT '[]',               -- 图片信息列表
+
+            -- 权限与状态（同步服务端）
+            privacy_type INTEGER DEFAULT 0,              -- 权限类型：0-公开 1-仅好友可见 2-仅部分可见 3-不给谁看
+            is_deleted INTEGER DEFAULT 0,                -- 是否删除（同步服务端软删除）
+
+            -- 本地缓存控制字段
+            sync_status INTEGER DEFAULT 0,               -- 同步状态：0-已同步 1-待同步 2-同步失败
+            expire_time INTEGER,                         -- 缓存过期时间戳（30天）
+            create_time INTEGER,                         -- 服务端发布时间戳
+            local_update_time INTEGER DEFAULT (strftime('%s', 'now')), -- 本地更新时间戳
+
+            -- 外键关联用户表
+            FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+        )
+    )";
+}
+
+/**
+ * @brief 获取创建朋友圈互动表的SQL语句
+ * 缓存点赞、评论等互动数据，避免频繁查询
+ */
+QString DatabaseSchema::getCreateTableLocalMomentInteract() {
+    return R"(
+        CREATE TABLE IF NOT EXISTS local_moment_interact (
+            interact_id INTEGER PRIMARY KEY AUTOINCREMENT, -- 本地自增ID
+            moment_id INTEGER NOT NULL UNIQUE,             -- 关联朋友圈ID（UNIQUE约束确保唯一）
+            likes TEXT DEFAULT '[]',                       -- 点赞列表JSON：[{"user_id":1,"username":"xxx","avatar_local_path":"xxx"},...]
+            comments TEXT DEFAULT '[]',                    -- 评论列表JSON：[{"comment_id":1,"user_id":1,"content":"xxx","images_info":"[]","reply_user_id":0,"create_time":123456},...]
+            local_update_time INTEGER DEFAULT (strftime('%s', 'now')), -- 本地更新时间戳
+
+            -- 外键关联朋友圈主表
+            FOREIGN KEY (moment_id) REFERENCES local_moment(moment_id) ON DELETE CASCADE
+        )
+    )";
+}
 
 /**
  * @brief 获取创建消息表触发器的SQL语句
@@ -176,7 +234,7 @@ QString DatabaseSchema::getCreateTableMediaCache() {
 QStringList DatabaseSchema::getCreateTriggers()
 {
     return {
-        // 消息插入触发器 - 简化版本
+        // 消息插入触发器 
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_conversation_insert
             AFTER INSERT ON messages
@@ -190,7 +248,7 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 消息删除触发器 - 简化版本
+        // 消息删除触发器 
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_conversation_delete
             AFTER DELETE ON messages
@@ -274,7 +332,6 @@ QStringList DatabaseSchema::getCreateTriggers()
     };
 }
 
-
 /**
  * @brief 获取创建数据库索引的SQL语句
  */
@@ -300,7 +357,7 @@ QString DatabaseSchema::getCreateIndexes() {
         CREATE INDEX IF NOT EXISTS idx_conversations_group_user ON conversations(group_id, user_id);
         CREATE INDEX IF NOT EXISTS idx_conversations_type ON conversations(type);
 
-        -- 消息表索引（关键性能索引）
+        -- 消息表索引
         CREATE INDEX IF NOT EXISTS idx_messages_conversation_time ON messages(conversation_id, msg_time DESC);
         CREATE INDEX IF NOT EXISTS idx_messages_sender_time ON messages(sender_id, msg_time DESC);
         CREATE INDEX IF NOT EXISTS idx_messages_time ON messages(msg_time DESC);
@@ -310,5 +367,14 @@ QString DatabaseSchema::getCreateIndexes() {
         CREATE INDEX IF NOT EXISTS idx_media_url ON media_cache(original_url);
         CREATE INDEX IF NOT EXISTS idx_media_access ON media_cache(last_access_time DESC);
         CREATE INDEX IF NOT EXISTS idx_media_type ON media_cache(file_type);
+
+        -- 朋友圈表索引（全部移到这里）
+        CREATE INDEX IF NOT EXISTS idx_local_moment_user ON local_moment(user_id);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_create_time ON local_moment(create_time DESC);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_sync_status ON local_moment(sync_status);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_expire ON local_moment(expire_time);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_deleted ON local_moment(is_deleted);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_interact_moment ON local_moment_interact(moment_id);
+        CREATE INDEX IF NOT EXISTS idx_local_moment_interact_time ON local_moment_interact(local_update_time DESC);
     )";
 }

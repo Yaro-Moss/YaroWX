@@ -27,12 +27,19 @@ set(PROJECT_SOURCES
     src/LoginAndRegisterDialog.ui
     src/WeChatWidget.ui
     src/dialogBox/UserInfoWidget.ui
-
+    src/dialogBox/AddFriendDialog.ui
+    src/moment/MomentMainWidget.ui
+    src/dialogBox/StrangerWidget.ui
+    src/dialogBox/AddFriendRequestDialog.ui
+    src/moment/MomentEditWidget.ui
+    src/moment/MomentItemWidget.ui
+    src/moment/CommentItemWidget.ui
+    src/moment/CommentInputWidget.ui
 )
  
 # 创建可执行文件
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
-    qt_add_executable(myWeChat
+    qt_add_executable(YaroWX
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
     )
@@ -45,7 +52,7 @@ else()
 endif()
 
 # 设置包含目录
-target_include_directories(myWeChat PRIVATE
+target_include_directories(YaroWX PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/include/media
     ${CMAKE_CURRENT_SOURCE_DIR}/include/ListView
@@ -53,17 +60,18 @@ target_include_directories(myWeChat PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/chatList
     ${CMAKE_CURRENT_SOURCE_DIR}/include/chatConversation
     ${CMAKE_CURRENT_SOURCE_DIR}/include/Delegate
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/moment
 )
 
 # 链接Qt库
-target_link_libraries(myWeChat PRIVATE
+target_link_libraries(YaroWX PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Multimedia
     Qt6::MultimediaWidgets
 )
 
 # 链接其他模块的库（根据你的实际库名调整）
-target_link_libraries(myWeChat PRIVATE
+target_link_libraries(YaroWX PRIVATE
     common
     controller
     media
@@ -72,25 +80,18 @@ target_link_libraries(myWeChat PRIVATE
 
 # 平台特定设置
 if(APPLE)
-    set_target_properties(myWeChat PROPERTIES
+    set_target_properties(YaroWX PROPERTIES
         MACOSX_BUNDLE_GUI_IDENTIFIER com.example.myWeChat
         MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
         MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
         MACOSX_BUNDLE TRUE
     )
 elseif(WIN32)
-    set_target_properties(myWeChat PROPERTIES
+    set_target_properties(YaroWX PROPERTIES
         WIN32_EXECUTABLE TRUE
     )
 endif()
 
-# # 安装配置
-# include(GNUInstallDirs)
-# install(TARGETS myWeChat
-#     BUNDLE DESTINATION .
-#     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-#     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-# )
 
 
 

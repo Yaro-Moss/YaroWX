@@ -316,3 +316,9 @@ void ContactController::onStarredContactsLoaded(int reqId, const QList<Contact>&
 {
     emit starredContactsLoaded(reqId, contacts);
 }
+
+Contact ContactController::getContactFromModel(qint64 userId)
+{
+    return m_contactTreeModel->getContactById(userId);
+}
+

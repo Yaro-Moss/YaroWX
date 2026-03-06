@@ -41,7 +41,6 @@ MediaDialog::MediaDialog(QWidget *parent)
 
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
-    setAttribute(Qt::WA_DeleteOnClose);
     setMouseTracking(true);   // 设置鼠标跟踪
 
     qApp->installEventFilter(this);
@@ -87,6 +86,10 @@ MediaDialog::MediaDialog(QWidget *parent)
 
 MediaDialog::~MediaDialog()
 {
+    // 停止视频播放
+    if (m_videoPlayer) {
+        m_videoPlayer->stop();
+    }
     delete ui;
     qApp->removeEventFilter(this);
 }
@@ -313,6 +316,8 @@ void MediaDialog::on_zoomOutButton_clicked()
 //关闭
 void MediaDialog::on_closeToolButton_clicked()
 {
+    m_videoPlayer->stop();
+    m_graphicsView->clear();
     close();
 }
 
@@ -412,20 +417,40 @@ void MediaDialog::on_fixedToolButton_clicked()
     show();
 }
 
-
 void MediaDialog::playSinglePixmap(const QPixmap &pixmap)
 {
+    // 停止视频，清理旧内容
+    m_videoPlayer->stop();
+    m_graphicsView->clear();
+
     mediaStackedWidget->setCurrentWidget(m_graphicsView);
     m_graphicsView->loadImage(pixmap);
     thumbnailPreview_Model->clearAllMediaItems();
 }
 
+void MediaDialog::playSingleVideo(QString path)
+{
+    mediaStackedWidget->setCurrentWidget(m_videoPlayer);
+    currentImgPath = QString();
+    m_videoPlayer->loadVideo(path);
+
+    // 强制触发窗口刷新（临时改变大小再恢复）
+    QSize oldSize = this->size();
+    resize(oldSize + QSize(1, 1));
+    resize(oldSize);                // 恢复原大小
+}
+
 void MediaDialog::playMedia(const QString &path, const QString &mediaTytpe)
 {
     if(mediaTytpe=="video"){
-        m_videoPlayer->loadVideo(path);
         mediaStackedWidget->setCurrentWidget(m_videoPlayer);
         currentImgPath = QString();
+        m_videoPlayer->loadVideo(path);
+
+        // 强制触发窗口刷新（临时改变大小再恢复）
+        QSize oldSize = this->size();
+        resize(oldSize + QSize(1, 1));
+        resize(oldSize);                // 恢复原大小
     }else if (mediaTytpe=="image") {
         m_videoPlayer->stop();
         currentImgPath = path;
@@ -522,6 +547,15 @@ void MediaDialog::onCurrentChanged(const QModelIndex &current, const QModelIndex
 void MediaDialog::setMediaItems(const QList<MediaItem>& items)
 {
     thumbnailPreview_Model->setMediaItems(items);
+    if (!items.isEmpty()) {
+        // 选中第一项
+        QModelIndex first = thumbnailPreview_Model->index(0, 0);
+        thumbnailView->setCurrentIndex(first);
+    } else {
+        // 列表为空，停止播放并清空视图
+        m_videoPlayer->stop();
+        m_graphicsView->clear();
+    }
 }
 
 void MediaDialog::selectMediaByMessageId(qint64 messageId)

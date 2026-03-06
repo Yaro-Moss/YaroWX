@@ -114,3 +114,35 @@ QModelIndex ContactTreeModel::findContactIndex(qint64 userId) const
     }
     return QModelIndex();
 }
+
+Contact ContactTreeModel::getContactById(qint64 userId) const
+{
+    Contact emptyContact;
+    emptyContact.userId = -1;
+
+    // 校验分组节点有效性
+    if (!m_contactGroupItem) {
+        return emptyContact;
+    }
+
+    // 遍历查找联系人
+    for (int row = 0; row < m_contactGroupItem->rowCount(); ++row) {
+        QStandardItem* contactItem = m_contactGroupItem->child(row);
+        if (!contactItem) {
+            continue;
+        }
+
+        // 取出并校验Contact数据
+        QVariant contactVar = contactItem->data(Qt::UserRole);
+        if (!contactVar.isValid() || !contactVar.canConvert<Contact>()) {
+            continue;
+        }
+
+        Contact contact = contactVar.value<Contact>();
+        if (contact.userId == userId) {
+            return contact;
+        }
+    }
+
+    return emptyContact;
+}

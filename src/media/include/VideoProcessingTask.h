@@ -22,6 +22,11 @@ public:
 
     void run() override;
 
+    static QString findFfmpegInEnvironment();
+    static QPixmap generateVideoThumbnail(const QString &videoPath,
+                                          const QSize &thumbnailSize,
+                                          QString *errorMsg = nullptr);
+
 signals:
     void finished(qint64 conversationId,
                   bool success,

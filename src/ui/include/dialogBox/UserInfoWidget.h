@@ -10,6 +10,9 @@ namespace Ui {
 class UserInfoWidget;
 }
 
+class MediaDialog;
+class WeChatWidget;
+
 class UserInfoWidget : public QWidget
 {
     Q_OBJECT
@@ -19,12 +22,8 @@ public:
     ~UserInfoWidget();
 
     void setSelectedContact(const Contact &contact);
-
-    ImgLabel *avatarLabel;
-
-signals:
-    void switchtoMessageInterface(const Contact &contact);
-
+    void setWeChatWidget(WeChatWidget* weChatWidget){m_weChatWidget = weChatWidget;}
+    void setMediaDialog(MediaDialog* mediaDialog);
 
 
 private slots:
@@ -43,7 +42,10 @@ private:
     QLabel *signatureLabel;
     QLabel *mutualgroupLable;
     QLabel *sourceLabel;
+    ImgLabel *avatarLabel;
 
+    MediaDialog *m_mediaDialog;
+    WeChatWidget *m_weChatWidget;
 };
 
 #endif // USERINFOWIDGET_H

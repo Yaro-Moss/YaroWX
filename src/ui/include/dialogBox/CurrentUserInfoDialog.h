@@ -9,6 +9,8 @@ namespace Ui {
 class CurrentUserInfoDialog;
 }
 class ImgLabel;
+class WeChatWidget;
+class MediaDialog;
 
 class CurrentUserInfoDialog : public ClickClosePopup
 {
@@ -18,14 +20,8 @@ public:
     explicit CurrentUserInfoDialog(QWidget *parent = nullptr);
     ~CurrentUserInfoDialog();
     void setCurrentUser(const Contact &user);
-
-    ImgLabel *avatarLabel;
-    QLabel *account;
-    QLabel *region;
-    QLabel *nickname;
-
-signals:
-    void switchMessageInterfaceToolButton(const Contact &contact);
+    void setWeChatWidget(WeChatWidget* weChatWidget){m_weChatWidget = weChatWidget;}
+    void setMediaDialog(MediaDialog* mediaDialog);
 
 protected:
 
@@ -35,7 +31,15 @@ private slots:
 
 private:
     Ui::CurrentUserInfoDialog *ui;
+
+    ImgLabel *avatarLabel;
+    QLabel *account;
+    QLabel *region;
+    QLabel *nickname;
+
     Contact currentUser;
+    MediaDialog *m_mediaDialog;
+    WeChatWidget *m_weChatWidget;
 
 };
 

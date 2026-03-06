@@ -14,6 +14,7 @@ public:
     void zoomIn();
     void zoomOut();
     void rotateCW90();
+    void clear();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;

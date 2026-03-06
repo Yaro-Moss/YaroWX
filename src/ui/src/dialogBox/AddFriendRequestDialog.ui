@@ -1,0 +1,911 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>AddFriendRequestDialog</class>
+ <widget class="QDialog" name="AddFriendRequestDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>400</width>
+    <height>720</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>400</width>
+    <height>720</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>410</width>
+    <height>720</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>Dialog</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QDialog{
+background-color: rgb(247, 247, 247);
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_9">
+   <property name="spacing">
+    <number>0</number>
+   </property>
+   <property name="leftMargin">
+    <number>0</number>
+   </property>
+   <property name="topMargin">
+    <number>0</number>
+   </property>
+   <property name="rightMargin">
+    <number>0</number>
+   </property>
+   <property name="bottomMargin">
+    <number>0</number>
+   </property>
+   <item>
+    <widget class="QWidget" name="widget_5" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>36</height>
+      </size>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_3">
+      <property name="spacing">
+       <number>0</number>
+      </property>
+      <property name="leftMargin">
+       <number>98</number>
+      </property>
+      <property name="topMargin">
+       <number>0</number>
+      </property>
+      <property name="rightMargin">
+       <number>0</number>
+      </property>
+      <property name="bottomMargin">
+       <number>3</number>
+      </property>
+      <item alignment="Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignBottom">
+       <widget class="QLabel" name="titleLabel">
+        <property name="styleSheet">
+         <string notr="true">font: 17px &quot;微软雅黑&quot;;</string>
+        </property>
+        <property name="text">
+         <string>申请添加好友</string>
+        </property>
+       </widget>
+      </item>
+      <item alignment="Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTop">
+       <widget class="QPushButton" name="closeButton">
+        <property name="minimumSize">
+         <size>
+          <width>36</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="maximumSize">
+         <size>
+          <width>36</width>
+          <height>26</height>
+         </size>
+        </property>
+        <property name="styleSheet">
+         <string notr="true">       QPushButton {
+            border: none;
+            background-color: transparent;
+            border-top-right-radius: 7px;  
+			margin: 0;
+            text-align: center;
+        }
+
+        /* 鼠标悬停状态：红色背景 */
+        QPushButton:hover {
+  			 background-color: rgb(255, 65, 68); 
+            border-top-right-radius: 7px;
+            color: white; 
+        }
+
+        /* 鼠标点击状态：红色加深 */
+        QPushButton:pressed {
+            /* 可选：点击时轻微偏移，模拟按压效果 */
+            padding-top: 1px;
+            padding-left: 1px;
+            border-top-right-radius: 7px;
+            background-color: rgb(214, 55, 57);
+        }
+</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="icon">
+         <iconset resource="../../res/icon.qrc">
+          <normaloff>:/a/icons/窗口关闭.svg</normaloff>:/a/icons/窗口关闭.svg</iconset>
+        </property>
+        <property name="iconSize">
+         <size>
+          <width>15</width>
+          <height>15</height>
+         </size>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="widget" native="true">
+     <layout class="QVBoxLayout" name="verticalLayout_5">
+      <property name="spacing">
+       <number>8</number>
+      </property>
+      <property name="leftMargin">
+       <number>28</number>
+      </property>
+      <property name="topMargin">
+       <number>11</number>
+      </property>
+      <property name="rightMargin">
+       <number>28</number>
+      </property>
+      <property name="bottomMargin">
+       <number>48</number>
+      </property>
+      <item>
+       <widget class="QWidget" name="widget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>7</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="styleSheet">
+            <string notr="true">font: 13px &quot;微软雅黑&quot;;
+color: rgb(150, 150, 150);</string>
+           </property>
+           <property name="text">
+            <string>发送添加好友申请</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QTextEdit" name="greetingTextEdit">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>90</height>
+            </size>
+           </property>
+           <property name="acceptDrops">
+            <bool>true</bool>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QTextEdit {
+        /* 浅灰色边框（#E0E0E0 为常用浅灰，可按需调整） */
+        border: 1px solid #E0E0E0;
+        /* 圆角半径（8px 适中，可根据需求增大/减小） */
+        border-radius: 7px;
+        /* 内边距（避免文字紧贴边框，提升美观度） */
+        padding: 8px;
+        /* 背景色（默认白色，可选透明 background: transparent;） */
+        background-color: #FFFFFF;
+        /* 字体（可选，统一界面风格） */
+        font-size: 15px;
+        font-family: &quot;Microsoft YaHei&quot;, sans-serif;
+    }
+
+    /* 聚焦状态（可选，增强交互反馈） */
+    QTextEdit:focus {
+        /* 聚焦时边框加深，突出当前控件 */
+        border-color: #B0B0B0;
+        /* 取消默认聚焦虚线（Qt 部分风格会有） */
+        outline: none;
+    }
+
+    /* 禁用状态（可选，优化视觉体验） */
+    QTextEdit:disabled {
+        border-color: #F0F0F0;
+        background-color: #F8F8F8;
+        color: #A0A0A0;
+    }</string>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::Shape::NoFrame</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Shadow::Sunken</enum>
+           </property>
+           <property name="undoRedoEnabled">
+            <bool>true</bool>
+           </property>
+           <property name="lineWrapMode">
+            <enum>QTextEdit::LineWrapMode::WidgetWidth</enum>
+           </property>
+           <property name="acceptRichText">
+            <bool>true</bool>
+           </property>
+           <property name="textInteractionFlags">
+            <set>Qt::TextInteractionFlag::TextEditorInteraction</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget_3" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item alignment="Qt::AlignmentFlag::AlignBottom">
+          <widget class="QLabel" name="remarkNameLabel">
+           <property name="styleSheet">
+            <string notr="true">font: 13px &quot;微软雅黑&quot;;
+color: rgb(150, 150, 150);</string>
+           </property>
+           <property name="text">
+            <string>备注</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignmentFlag::AlignBottom">
+          <widget class="QLineEdit" name="remarkNameLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+    border: 1px solid #E0E0E0;
+    border-radius: 7px;
+    padding: 7px;
+    background-color: #FFFFFF;
+    font-size: 15px;
+    font-family: &quot;Microsoft YaHei&quot;, sans-serif;
+}
+
+QLineEdit:focus {
+    border-color: #B0B0B0;
+    outline: none;
+}
+
+QLineEdit:disabled {
+    border-color: #F0F0F0;
+    background-color: #F8F8F8;
+    color: #A0A0A0;
+}</string>
+           </property>
+           <property name="frame">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_3">
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item alignment="Qt::AlignmentFlag::AlignBottom">
+          <widget class="QLabel" name="tagLabel">
+           <property name="styleSheet">
+            <string notr="true">font: 13px &quot;微软雅黑&quot;;
+color: rgb(150, 150, 150);</string>
+           </property>
+           <property name="text">
+            <string>标签</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignmentFlag::AlignBottom">
+          <widget class="QLineEdit" name="tagLineEdit">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>48</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QLineEdit {
+    border: 1px solid #E0E0E0;
+    border-radius: 7px;
+    padding: 8px;
+    background-color: #FFFFFF;
+    font-size: 15px;
+    font-family: &quot;Microsoft YaHei&quot;, sans-serif;
+}
+
+QLineEdit:focus {
+    border-color: #B0B0B0;
+    outline: none;
+}
+
+QLineEdit:disabled {
+    border-color: #F0F0F0;
+    background-color: #F8F8F8;
+    color: #A0A0A0;
+}</string>
+           </property>
+           <property name="frame">
+            <bool>false</bool>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget_2" native="true">
+        <property name="styleSheet">
+         <string notr="true"/>
+        </property>
+        <layout class="QVBoxLayout" name="verticalLayout_7">
+         <property name="spacing">
+          <number>3</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="friendPermissionsLabel">
+           <property name="styleSheet">
+            <string notr="true">font: 13px &quot;微软雅黑&quot;;
+color: rgb(150, 150, 150);</string>
+           </property>
+           <property name="text">
+            <string>朋友权限</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="friendPermissionsWidget" native="true">
+           <property name="styleSheet">
+            <string notr="true">#friendPermissionsWidget{
+background-color: rgb(255, 255, 255);
+border: 1px solid #E0E0E0;
+border-radius: 8px;
+}</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_4">
+            <property name="spacing">
+             <number>0</number>
+            </property>
+            <property name="leftMargin">
+             <number>2</number>
+            </property>
+            <property name="topMargin">
+             <number>2</number>
+            </property>
+            <property name="rightMargin">
+             <number>2</number>
+            </property>
+            <property name="bottomMargin">
+             <number>2</number>
+            </property>
+            <item>
+             <widget class="QWidget" name="PermissionsWidget1" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>48</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">#PermissionsWidget1 {
+    /* 保留原有边框设置 */
+    border-bottom: 1px solid #E0E0E0; 
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-top-left-radius: 7px;   
+    border-top-right-radius: 7px; 
+}</string>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout">
+               <property name="topMargin">
+                <number>1</number>
+               </property>
+               <property name="rightMargin">
+                <number>13</number>
+               </property>
+               <property name="bottomMargin">
+                <number>1</number>
+               </property>
+               <item alignment="Qt::AlignmentFlag::AlignLeft">
+                <widget class="QPushButton" name="pushButton">
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border: none;               /* 去除边框 */
+    background: transparent;    /* 背景透明 */
+    color: #333333;             /* 文字颜色（可自定义） */
+    padding: 4px 8px;           /* 内边距（控制点击区域大小） */
+    outline: none;              /* 去除聚焦时的虚线边框（可选） */
+}</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../../res/icon.qrc">
+                   <normaloff>:/a/icons/朋友圈 .svg</normaloff>:/a/icons/朋友圈 .svg</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox">
+                 <property name="cursor">
+                  <cursorShape>ArrowCursor</cursorShape>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::RightToLeft</enum>
+                 </property>
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font: 15px &quot;微软雅黑&quot;;
+color: rgb(80, 80, 80);
+</string>
+                 </property>
+                 <property name="text">
+                  <string>聊天、朋友圈、微信运动等</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QWidget" name="PermissionsWidget2" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>48</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <property name="leftMargin">
+                <number>11</number>
+               </property>
+               <property name="topMargin">
+                <number>11</number>
+               </property>
+               <property name="rightMargin">
+                <number>13</number>
+               </property>
+               <property name="bottomMargin">
+                <number>11</number>
+               </property>
+               <item alignment="Qt::AlignmentFlag::AlignLeft">
+                <widget class="QPushButton" name="pushButton_2">
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border: none;               /* 去除边框 */
+    background: transparent;    /* 背景透明 */
+    color: #333333;             /* 文字颜色（可自定义） */
+    padding: 4px 8px;           /* 内边距（控制点击区域大小） */
+    outline: none;              /* 去除聚焦时的虚线边框（可选） */
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../../res/icon.qrc">
+                   <normaloff>:/a/icons/通讯录 .svg</normaloff>:/a/icons/通讯录 .svg</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_2">
+                 <property name="cursor">
+                  <cursorShape>ArrowCursor</cursorShape>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::RightToLeft</enum>
+                 </property>
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font: 15px &quot;微软雅黑&quot;;
+color: rgb(80, 80, 80);</string>
+                 </property>
+                 <property name="text">
+                  <string>仅聊天</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget_4" native="true">
+        <layout class="QVBoxLayout" name="verticalLayout_8">
+         <property name="spacing">
+          <number>4</number>
+         </property>
+         <property name="leftMargin">
+          <number>0</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>0</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item>
+          <widget class="QLabel" name="MomentsLabel">
+           <property name="styleSheet">
+            <string notr="true">font: 13px &quot;微软雅黑&quot;;
+color: rgb(150, 150, 150);</string>
+           </property>
+           <property name="text">
+            <string>朋友圈和状态</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QWidget" name="MomentsPermissionsWidget" native="true">
+           <property name="styleSheet">
+            <string notr="true">#MomentsPermissionsWidget{
+background-color: rgb(255, 255, 255);
+border: 1px solid #E0E0E0;
+border-radius: 11px;
+}</string>
+           </property>
+           <layout class="QVBoxLayout" name="verticalLayout_6">
+            <property name="spacing">
+             <number>0</number>
+            </property>
+            <property name="leftMargin">
+             <number>2</number>
+            </property>
+            <property name="topMargin">
+             <number>2</number>
+            </property>
+            <property name="rightMargin">
+             <number>2</number>
+            </property>
+            <property name="bottomMargin">
+             <number>2</number>
+            </property>
+            <item>
+             <widget class="QWidget" name="PermissionsWidget1_3" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>48</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">#PermissionsWidget1_3 {   
+	background-color: rgb(255, 255, 255);
+    border-bottom: 1px solid #E0E0E0; 
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-top-left-radius: 11px;   
+    border-top-right-radius: 8px; 
+}</string>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <property name="leftMargin">
+                <number>11</number>
+               </property>
+               <property name="rightMargin">
+                <number>13</number>
+               </property>
+               <item alignment="Qt::AlignmentFlag::AlignLeft">
+                <widget class="QPushButton" name="pushButton_5">
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border: none;               /* 去除边框 */
+    background: transparent;    /* 背景透明 */
+    color: #333333;             /* 文字颜色（可自定义） */
+    padding: 4px 8px;           /* 内边距（控制点击区域大小） */
+    outline: none;              /* 去除聚焦时的虚线边框（可选） */
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../../res/icon.qrc">
+                   <normaloff>:/a/icons/朋友圈 .svg</normaloff>:/a/icons/朋友圈 .svg</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_5">
+                 <property name="cursor">
+                  <cursorShape>ArrowCursor</cursorShape>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::RightToLeft</enum>
+                 </property>
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font: 15px &quot;微软雅黑&quot;;
+</string>
+                 </property>
+                 <property name="text">
+                  <string>不让他（她）看</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+            <item>
+             <widget class="QWidget" name="PermissionsWidget2_3" native="true">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>48</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string notr="true"/>
+              </property>
+              <layout class="QHBoxLayout" name="horizontalLayout_6">
+               <property name="rightMargin">
+                <number>13</number>
+               </property>
+               <item alignment="Qt::AlignmentFlag::AlignLeft">
+                <widget class="QPushButton" name="pushButton_6">
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::LeftToRight</enum>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">QPushButton {
+    border: none;               /* 去除边框 */
+    background: transparent;    /* 背景透明 */
+    color: #333333;             /* 文字颜色（可自定义） */
+    padding: 4px 8px;           /* 内边距（控制点击区域大小） */
+    outline: none;              /* 去除聚焦时的虚线边框（可选） */
+}
+</string>
+                 </property>
+                 <property name="text">
+                  <string/>
+                 </property>
+                 <property name="icon">
+                  <iconset resource="../../res/icon.qrc">
+                   <normaloff>:/a/icons/通讯录 .svg</normaloff>:/a/icons/通讯录 .svg</iconset>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="checkBox_6">
+                 <property name="cursor">
+                  <cursorShape>ArrowCursor</cursorShape>
+                 </property>
+                 <property name="layoutDirection">
+                  <enum>Qt::LayoutDirection::RightToLeft</enum>
+                 </property>
+                 <property name="autoFillBackground">
+                  <bool>false</bool>
+                 </property>
+                 <property name="styleSheet">
+                  <string notr="true">font: 15px &quot;微软雅黑&quot;;</string>
+                 </property>
+                 <property name="text">
+                  <string>不看他（她）</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacer">
+        <property name="orientation">
+         <enum>Qt::Orientation::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QWidget" name="widget_6" native="true">
+        <layout class="QHBoxLayout" name="horizontalLayout_7">
+         <property name="spacing">
+          <number>0</number>
+         </property>
+         <property name="leftMargin">
+          <number>66</number>
+         </property>
+         <property name="topMargin">
+          <number>0</number>
+         </property>
+         <property name="rightMargin">
+          <number>66</number>
+         </property>
+         <property name="bottomMargin">
+          <number>0</number>
+         </property>
+         <item alignment="Qt::AlignmentFlag::AlignLeft">
+          <widget class="QPushButton" name="confirmButton">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>34</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>34</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton{
+background-color:rgb(7, 193, 96);
+color: rgb(255, 255, 255);
+font: 17px &quot;黑体&quot;;
+border-radius: 4px; /* 轻微圆角，可选 */
+}
+
+/* 鼠标悬停状态 */
+QPushButton:hover {
+    background-color:rgb(7, 182, 88);
+}
+
+/* 鼠标按下状态（可选增强） */
+QPushButton:pressed {
+    background-color:rgb(6, 178, 83)
+}</string>
+           </property>
+           <property name="text">
+            <string>确定</string>
+           </property>
+          </widget>
+         </item>
+         <item alignment="Qt::AlignmentFlag::AlignRight">
+          <widget class="QPushButton" name="cancelButton">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>34</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>34</height>
+            </size>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">QPushButton{
+background-color:rgb(230, 230, 230);
+color:rgb(80, 80,80);
+font: 17px &quot;黑体&quot;;
+border-radius: 4px; /* 轻微圆角，可选 */
+}
+
+/* 鼠标悬停状态 */
+QPushButton:hover {
+    background-color:rgb(220, 220, 220);
+}
+
+/* 鼠标按下状态（可选增强） */
+QPushButton:pressed {
+    background-color:rgb(200, 200, 200);
+}</string>
+           </property>
+           <property name="text">
+            <string>取消</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../../res/icon.qrc"/>
+ </resources>
+ <connections/>
+</ui>

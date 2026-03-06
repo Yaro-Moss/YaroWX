@@ -202,7 +202,6 @@ void GenerationWorker::generateNonFriends(int count)
     qDebug() << "在后台线程中开始生成" << count << "个非好友用户...";
 
     int successCount = 0;
-    int failCount = 0;
 
     for (int i = 0; i < count; ++i) {
         // 生成用户
@@ -219,9 +218,11 @@ void GenerationWorker::generateNonFriends(int count)
             QThread::msleep(1);
             QCoreApplication::processEvents();
         }
+
+        successCount++;
     }
 
-    QString message = QString("生成完成。成功: %1, 失败: %2").arg(successCount).arg(failCount);
+    QString message = QString("生成完成。成功: %1, 失败: %2").arg(successCount).arg(count-successCount);
     qDebug() << message;
     emit nonFriendsGenerated(successCount > 0, message);
 }
@@ -241,7 +242,6 @@ void GenerationWorker::generateFriends(int count)
     qDebug() << "在后台线程中开始生成" << count << "个好友...";
 
     int successCount = 0;
-    int failCount = 0;
 
     for (int i = 0; i < count; ++i) {
         // 生成用户
@@ -264,9 +264,11 @@ void GenerationWorker::generateFriends(int count)
             QThread::msleep(1);
             QCoreApplication::processEvents();
         }
+
+        successCount++;
     }
 
-    QString message = QString("好友生成完成。成功: %1, 失败: %2").arg(successCount).arg(failCount);
+    QString message = QString("好友生成完成。成功: %1, 失败: %2").arg(successCount).arg(count-successCount);
     qDebug() << message;
     emit friendsGenerated(successCount > 0, message);
 }

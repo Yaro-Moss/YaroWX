@@ -186,6 +186,31 @@ void CustomGraphicsView::rotateCW90()
     m_scene->setSceneRect(m_pixmapItem->sceneBoundingRect());
 }
 
+// 完整的清空函数（重置所有状态 + 清理图片）
+void CustomGraphicsView::clear()
+{
+    // 1. 先调用已有函数清理图片项
+    clearCurrentImage();
+
+    // 2. 清空原始像素图
+    m_originalPixmap = QPixmap();
+
+    // 3. 重置缩放因子
+    m_scaleFactor = 1.0;
+
+    // 4. 重置变换（清空缩放、旋转等所有变换）
+    resetTransform();
+
+    // 5. 重置适配窗口状态
+    m_wasFitToWindow = false;
+
+    // 6. 清空场景的包围矩形（回到初始空白）
+    m_scene->setSceneRect(QRectF());
+
+    // 7. 重置鼠标状态（防止清空后鼠标还处于拖拽状态）
+    setCursor(Qt::ArrowCursor);
+    setDragMode(NoDrag);
+}
 
 
 

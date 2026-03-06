@@ -36,6 +36,8 @@ class ContactTreeView;
 class ContactItemDelegate;
 class ContactController;
 class UserInfoWidget;
+class MomentMainWidget;
+class LocalMomentController;
 
 class WeChatWidget : public QWidget
 {
@@ -44,6 +46,9 @@ class WeChatWidget : public QWidget
 public:
     explicit WeChatWidget(AppController *Controller, QWidget *parent = nullptr);
     ~WeChatWidget();
+
+public slots:
+    void on_switchtoMessageInterface(Contact contact);
 
 
 protected:
@@ -88,7 +93,8 @@ private slots:
 
     void on_recordVoiceButton_clicked();
 
-    bool on_switchtoMessageInterface(Contact contact);
+    void on_momentButton_clicked();
+
 private:
     //自定义窗口相关
     bool m_isOnTop; // 记录当前是否置顶
@@ -115,8 +121,9 @@ private:
     QPointer<AddDialog> addDialog;
     QPointer<MoreDialog> moreDialog;
     QPointer<FloatingDialog> floatingDialog;
-    QPointer<CurrentUserInfoDialog> currentUserInfoDialog;
     QPointer<MediaDialog> mediaDialog;
+    QPointer<MomentMainWidget>momentMainWidget;
+    LocalMomentController* localMomentController;
 
     UserInfoWidget *userInfoWidget;
 
@@ -145,6 +152,10 @@ private:
 
     void updateSendButtonStyle();//更新发送按钮样式
 
+    void initChatList();
+    void initMessageList();
+    void initCurrentUser();
+    void initContactList();
 
 };
 

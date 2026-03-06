@@ -8,6 +8,7 @@
 #include <QAbstractItemView>
 #include "ChatMessagesModel.h"
 #include "ChatMessageListView.h"
+#include "AudioPlayer.h"
 
 ChatMessageDelegate::ChatMessageDelegate(QObject *parent)
     : QStyledItemDelegate(parent)
@@ -154,15 +155,14 @@ bool ChatMessageDelegate::handleLeftClick(QMouseEvent *mouseEvent, const QStyleO
 
     switch (message.type) {
     case MessageType::IMAGE:
-    case MessageType::VIDEO: {
+    case MessageType::VIDEO:
         emit mediaClicked(message.messageId, message.conversationId);
         break;
-    }
     case MessageType::FILE:
         emit fileClicked(message.filePath);
         break;
     case MessageType::VOICE:
-        emit voiceClicked(message.filePath);
+        emit voiceClicked(message.filePath, message.messageId);
         break;
     case MessageType::TEXT:
         emit textClicked(message.content);
@@ -600,10 +600,11 @@ void ChatMessageDelegate::paintVoiceMessage(QPainter *painter, const QStyleOptio
     }
     painter->drawPolygon(triangle);
 
+    AudioPlayer* player = AudioPlayer::instance();
+    bool isPlaying = player->isPlaying() && (player->currentMessageId() == message.messageId);
     // 绘制播放按钮和波形
-    paintPlayButtonAndWaveform(painter, voiceBubbleRect, isOwnMessage);
+    paintPlayButtonAndWaveform(painter, voiceBubbleRect, isOwnMessage, isPlaying, message.messageId);
     paintDurationText(painter, voiceBubbleRect, duration, isOwnMessage);
-
     // 绘制时间戳
     QRect timeRect = QRect(voiceBubbleRect.left(), voiceBubbleRect.bottom() + margin,
                            voiceBubbleRect.width(), 0);
@@ -767,13 +768,14 @@ void ChatMessageDelegate::paintFileIcon(QPainter *painter, const QRect &fileRect
 }
 
 void ChatMessageDelegate::paintPlayButtonAndWaveform(QPainter *painter,
-                                                     const QRect &bubbleRect, bool isOwnMessage) const
+                                                     const QRect &bubbleRect,
+                                                     bool isOwnMessage,
+                                                     bool isPlaying,
+                                                     const qint64& messageId) const
 {
     const int playButtonSize = PLAY_BUTTON_SIZE;
-    const int waveformHeight = WAVEFORM_HEIGHT;
-    const int waveformWidth = 60;
 
-    // 计算播放按钮位置
+    // 计算播放按钮位置（同原有代码）
     QRect playButtonRect;
     if (isOwnMessage) {
         playButtonRect = QRect(bubbleRect.right() - playButtonSize - 8,
@@ -785,58 +787,79 @@ void ChatMessageDelegate::paintPlayButtonAndWaveform(QPainter *painter,
                                playButtonSize, playButtonSize);
     }
 
-    // 绘制播放按钮（圆形背景）
+    // 绘制圆形按钮背景（颜色与原有逻辑一致）
     painter->setPen(Qt::NoPen);
     if (isOwnMessage) {
         painter->setBrush(Qt::white);
     } else {
-        painter->setBrush(QColor(0x07, 0xC1, 0x60)); // 微信绿色
+        painter->setBrush(QColor(0x07, 0xC1, 0x60));
     }
     painter->drawEllipse(playButtonRect);
 
-    // 绘制播放图标（三角形）
+    // 根据播放状态绘制图标
     painter->setBrush(isOwnMessage ? QColor(0x07, 0xC1, 0x60) : Qt::white);
-    QPolygon playIcon;
-    int iconSize = 8;
-    if (isOwnMessage) {
-        playIcon << QPoint(playButtonRect.center().x() - 2, playButtonRect.center().y() - iconSize/2)
-        << QPoint(playButtonRect.center().x() - 2, playButtonRect.center().y() + iconSize/2)
-        << QPoint(playButtonRect.center().x() + iconSize/2, playButtonRect.center().y());
+    if (isPlaying) {
+        // 绘制暂停图标（两个竖条）
+        int barWidth = 3;
+        int barHeight = 10;
+        int centerX = playButtonRect.center().x();
+        int centerY = playButtonRect.center().y();
+        QRect leftBar(centerX - barWidth - 2, centerY - barHeight/2, barWidth, barHeight);
+        QRect rightBar(centerX + 2, centerY - barHeight/2, barWidth, barHeight);
+        painter->drawRect(leftBar);
+        painter->drawRect(rightBar);
     } else {
-        playIcon << QPoint(playButtonRect.center().x() + 2, playButtonRect.center().y() - iconSize/2)
-        << QPoint(playButtonRect.center().x() + 2, playButtonRect.center().y() + iconSize/2)
-        << QPoint(playButtonRect.center().x() - iconSize/2, playButtonRect.center().y());
+        // 绘制播放三角形（同原有逻辑）
+        QPolygon playIcon;
+        int iconSize = 8;
+        if (isOwnMessage) {
+            playIcon << QPoint(playButtonRect.center().x() - 2, playButtonRect.center().y() - iconSize/2)
+            << QPoint(playButtonRect.center().x() - 2, playButtonRect.center().y() + iconSize/2)
+            << QPoint(playButtonRect.center().x() + iconSize/2, playButtonRect.center().y());
+        } else {
+            playIcon << QPoint(playButtonRect.center().x() + 2, playButtonRect.center().y() - iconSize/2)
+            << QPoint(playButtonRect.center().x() + 2, playButtonRect.center().y() + iconSize/2)
+            << QPoint(playButtonRect.center().x() - iconSize/2, playButtonRect.center().y());
+        }
+        painter->drawPolygon(playIcon);
     }
-    painter->drawPolygon(playIcon);
 
-    // 绘制波形（模拟微信样式）
+    // 绘制波形（传入播放状态和消息Id）
     QRect waveformRect;
     if (isOwnMessage) {
-        waveformRect = QRect(playButtonRect.left() - waveformWidth - 5,
-                             bubbleRect.center().y() - waveformHeight/2,
-                             waveformWidth, waveformHeight);
+        waveformRect = QRect(playButtonRect.left() - 60 - 5,
+                             bubbleRect.center().y() - WAVEFORM_HEIGHT/2,
+                             60, WAVEFORM_HEIGHT);
     } else {
         waveformRect = QRect(playButtonRect.right() + 5,
-                             bubbleRect.center().y() - waveformHeight/2,
-                             waveformWidth, waveformHeight);
+                             bubbleRect.center().y() - WAVEFORM_HEIGHT/2,
+                             60, WAVEFORM_HEIGHT);
     }
-
-    paintVoiceWaveform(painter, waveformRect, isOwnMessage);
+    paintVoiceWaveform(painter, waveformRect, isOwnMessage, isPlaying, messageId);
 }
 
-void ChatMessageDelegate::paintVoiceWaveform(QPainter *painter, const QRect &rect,
-                                             bool isOwnMessage) const
+void ChatMessageDelegate::paintVoiceWaveform(QPainter *painter,
+                                             const QRect &rect,
+                                             bool isOwnMessage,
+                                             bool isPlaying,
+                                             const qint64& messageId) const
 {
-    // 微信风格的波形：几条不同高度的竖线
-    const int barCount = 4;
+    QList<int> heights;
+    if (isPlaying) {
+        // 从播放器获取当前波形数据
+        heights = AudioPlayer::instance()->currentWaveform();
+    } else {
+        // 默认静态波形（与原逻辑一致）
+        heights = {8, 12, 16, 12};
+    }
+
+    // 绘制条形图（保持原有绘制逻辑，但使用 heights 数据）
+    const int barCount = heights.size();
     const int barWidth = 3;
     const int gap = 2;
     int totalWidth = barCount * barWidth + (barCount - 1) * gap;
     int startX = rect.left() + (rect.width() - totalWidth) / 2;
     int centerY = rect.center().y();
-
-    // 波形的相对高度（模拟）
-    int heights[4] = {8, 12, 16, 12};
 
     painter->setPen(Qt::NoPen);
     for (int i = 0; i < barCount; ++i) {
@@ -844,7 +867,6 @@ void ChatMessageDelegate::paintVoiceWaveform(QPainter *painter, const QRect &rec
         QRect barRect(startX + i * (barWidth + gap),
                       centerY - barHeight/2,
                       barWidth, barHeight);
-
         if (isOwnMessage) {
             painter->setBrush(Qt::white);
         } else {

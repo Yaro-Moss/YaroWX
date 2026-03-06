@@ -5,7 +5,7 @@
 
 class DatabaseSchema {
 public:
-    // 表名常量
+    // 表名常量（新增朋友圈相关表名）
     static const char* TABLE_CURRENT_USER;
     static const char* TABLE_CONTACTS;
     static const char* TABLE_GROUP_MEMBERS;
@@ -13,6 +13,8 @@ public:
     static const char* TABLE_CONVERSATIONS;
     static const char* TABLE_MESSAGES;
     static const char* TABLE_MEDIA_CACHE;
+    static const char* TABLE_LOCAL_MOMENT;         
+    static const char* TABLE_LOCAL_MOMENT_INTERACT; 
 
     // 创建表的SQL语句
     static QString getCreateTableUser();
@@ -22,6 +24,8 @@ public:
     static QString getCreateTableConversations();
     static QString getCreateTableMessages();
     static QString getCreateTableMediaCache();
+    static QString getCreateTableLocalMoment();          
+    static QString getCreateTableLocalMomentInteract();   
 
     static QStringList getCreateTriggers();
     static QString getCreateIndexes();

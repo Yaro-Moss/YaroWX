@@ -1,14 +1,30 @@
 #include "ImgLabel.h"
+#include "MediaDialog.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QDebug>
+#include "ThumbnailResourceManager.h"
+#include "VideoProcessingTask.h"
 
 ImgLabel::ImgLabel(QWidget *parent, int radius)
-    : QLabel(parent), m_radius(radius)
+    : QLabel(parent),
+    m_radius(radius),
+    m_mediaDialog(nullptr)
 {
     // 设置背景透明，避免圆角边缘出现默认背景色
     setAttribute(Qt::WA_TranslucentBackground, true);
 }
+
+void ImgLabel::setVideoPath(QString path)
+{
+    videoPath = path;
+    QString *errorMsg = nullptr;
+    QPixmap videoThumbnail = VideoProcessingTask::generateVideoThumbnail(videoPath, this->size(), errorMsg);
+    ThumbnailResourceManager::addPlayButton(videoThumbnail);
+    setPixmap(videoThumbnail);
+    setRadius(0);
+}
+
 
 void ImgLabel::setRadius(int radius)
 {
@@ -26,7 +42,22 @@ void ImgLabel::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton)
     {
-        // 发送点击信号，传递当前的pixmap
+        if(m_mediaDialog){
+            if(!videoPath.isEmpty()){
+                m_mediaDialog->playSingleVideo(videoPath);
+            }else{
+                m_mediaDialog->playSinglePixmap(m_pixmap);
+            }
+            m_mediaDialog->close();
+            m_mediaDialog->show();
+
+            // 强制触发窗口刷新（临时改变大小再恢复）
+            QSize oldSize = m_mediaDialog->size();
+            m_mediaDialog->resize(oldSize + QSize(1, 1));
+            m_mediaDialog->resize(oldSize);                // 恢复原大小
+        }else{
+            qDebug()<<"媒体播放器损坏";
+        }
         emit labelClicked(m_pixmap);
     }
     // 调用父类方法，确保事件正常传递

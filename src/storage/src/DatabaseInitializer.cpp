@@ -7,6 +7,7 @@
 #include <QFileInfo>
 #include <QDebug>
 #include <QFile>
+#include <qthread.h>
 
 std::atomic<bool> DatabaseInitializer::s_initialized{false};
 QMutex DatabaseInitializer::s_initMutex;
@@ -29,10 +30,17 @@ DatabaseInitializer::DatabaseInitializer(QObject* parent)
 
 DatabaseInitializer::~DatabaseInitializer()
 {
+    // 先销毁所有可能的查询对象，再关闭连接
+    QSqlDatabase db;
     if (QSqlDatabase::contains("main")) {
-        QSqlDatabase::database("main").close();
-        QSqlDatabase::removeDatabase("main");
+        db = QSqlDatabase::database("main");
+        if (db.isOpen()) {
+            db.close();
+        }
+        // 手动销毁查询对象（避免连接被占用）
+        QSqlQuery().finish();
     }
+    QSqlDatabase::removeDatabase("main");
 }
 
 bool DatabaseInitializer::ensureInitialized()
@@ -49,11 +57,17 @@ bool DatabaseInitializer::ensureInitialized()
     QMutexLocker globalLock(&s_initMutex);
     if (s_initialized.load()) return true;
 
-    // 检查数据库文件是否已存在（用于决定失败时是否删除）
+    // 检查数据库文件是否已存在
     bool dbFileExisted = databaseFileExists();
 
-    // 如果连接名已存在，先清理
+    // 先清理旧连接（确保查询对象销毁）
     if (QSqlDatabase::contains("main")) {
+        QSqlDatabase oldDb = QSqlDatabase::database("main");
+        if (oldDb.isOpen()) {
+            oldDb.close();
+        }
+        // 手动销毁所有可能的查询对象
+        QSqlQuery().finish();
         QSqlDatabase::removeDatabase("main");
     }
 
@@ -61,9 +75,10 @@ bool DatabaseInitializer::ensureInitialized()
     db.setDatabaseName(m_dbPath);
     if (!db.open()) {
         qCritical() << "Failed to open main DB:" << db.lastError().text();
+        // 销毁连接
         QSqlDatabase::removeDatabase("main");
 
-        // 如果数据库文件是本次运行时创建的，删除它
+        // 删除新建的损坏文件
         if (!dbFileExisted) {
             removeDatabaseFile();
         }
@@ -72,14 +87,18 @@ bool DatabaseInitializer::ensureInitialized()
 
     applyPragmas(db);
 
+    // 声明查询对象在栈上，确保作用域结束后销毁
+    QSqlQuery q(db);
     bool ok = createTables(db);
 
+    // 显式结束查询、关闭连接
+    q.finish();
     db.close();
+    // 销毁连接（必须在db对象销毁前调用）
     QSqlDatabase::removeDatabase("main");
 
     if (!ok) {
         qCritical() << "Database initialization failed";
-        // 初始化失败时删除数据库文件
         removeDatabaseFile();
         return false;
     }
@@ -137,7 +156,9 @@ bool DatabaseInitializer::createTables(QSqlDatabase &db)
         DatabaseSchema::getCreateTableGroupMembers(),
         DatabaseSchema::getCreateTableConversations(),
         DatabaseSchema::getCreateTableMessages(),
-        DatabaseSchema::getCreateTableMediaCache()
+        DatabaseSchema::getCreateTableMediaCache(),
+        DatabaseSchema::getCreateTableLocalMoment(),
+        DatabaseSchema::getCreateTableLocalMomentInteract()
     };
 
     for (const QString &sql : tables) {
@@ -199,28 +220,35 @@ bool DatabaseInitializer::removeDatabaseFile()
         return false;
     }
 
-    // 关闭所有数据库连接
+    // 确保连接完全关闭且查询对象销毁
+    QSqlDatabase db;
     if (QSqlDatabase::contains("main")) {
-        QSqlDatabase::database("main").close();
+        db = QSqlDatabase::database("main");
+        if (db.isOpen()) {
+            db.close();
+        }
+        QSqlQuery().finish();
         QSqlDatabase::removeDatabase("main");
     }
 
+    // 延迟100ms确保文件句柄释放（Windows下文件删除可能卡顿）
+    QThread::msleep(100);
+
     QFile dbFile(m_dbPath);
+    bool removed = false;
     if (dbFile.exists()) {
-        bool removed = dbFile.remove();
+        removed = dbFile.remove();
         if (removed) {
             qDebug() << "Removed corrupted database file:" << m_dbPath;
-
-            // 同时删除相关的 WAL 文件
+            // 同时删除WAL和SHM文件
             QFile::remove(m_dbPath + "-wal");
             QFile::remove(m_dbPath + "-shm");
         } else {
             qWarning() << "Failed to remove database file:" << m_dbPath;
         }
-        return removed;
     }
 
-    return true; // 文件不存在也算删除成功
+    return removed;
 }
 
 void DatabaseInitializer::resetDatabase()

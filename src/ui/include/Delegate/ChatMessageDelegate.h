@@ -27,7 +27,7 @@ public:
 signals:
     void mediaClicked(const qint64 &msgId, const qint64 &conversationId);
     void fileClicked(const QString &filePath);
-    void voiceClicked(const QString &voicePath);
+    void voiceClicked(const QString &voicePath, const qint64 &messageId);
     void textClicked(const QString &text);
     void rightClicked(const QPoint& globalPos, const Message &message);
 
@@ -57,10 +57,16 @@ private:
                    const Message &message, bool isOwnMessage) const;
     void paintFileIcon(QPainter *painter, const QRect &fileRect,
                        const QString &extension) const;
-    void paintPlayButtonAndWaveform(QPainter *painter, const QRect &bubbleRect,
-                                    bool isOwnMessage) const;
-    void paintVoiceWaveform(QPainter *painter, const QRect &rect,
-                            bool isOwnMessage) const;
+    void paintPlayButtonAndWaveform(QPainter *painter,
+                                    const QRect &bubbleRect,
+                                    bool isOwnMessage,
+                                    bool isPlaying,
+                                    const qint64 &messageId) const;
+    void paintVoiceWaveform(QPainter *painter,
+                            const QRect &rect,
+                            bool isOwnMessage,
+                            bool isPlaying,
+                            const qint64 &messageId) const;
     void paintDurationText(QPainter *painter, const QRect &bubbleRect,
                            int duration, bool isOwnMessage) const;
 

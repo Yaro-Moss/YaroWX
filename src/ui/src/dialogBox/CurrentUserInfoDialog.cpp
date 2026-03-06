@@ -1,5 +1,6 @@
 #include "CurrentUserInfoDialog.h"
 #include "ThumbnailResourceManager.h"
+#include "WeChatWidget.h"
 #include "ui_CurrentUserInfoDialog.h"
 #include <QPainter>
 #include <QPainterPath>
@@ -7,12 +8,15 @@
 CurrentUserInfoDialog::CurrentUserInfoDialog(QWidget *parent)
     : ClickClosePopup(parent)
     , ui(new Ui::CurrentUserInfoDialog)
+    , m_weChatWidget(nullptr)
+    , m_mediaDialog(nullptr)
 {
     ui->setupUi(this);
     avatarLabel = ui->avatarLabel;
     account = ui->account;
     region = ui->region;
     nickname = ui->nickname;
+    connect(avatarLabel, &ImgLabel::labelClicked, this, &CurrentUserInfoDialog::close);
 }
 
 CurrentUserInfoDialog::~CurrentUserInfoDialog()
@@ -41,9 +45,20 @@ void CurrentUserInfoDialog::setCurrentUser(const Contact &user)
     region->setText(currentUser.user.region);
 }
 
+void CurrentUserInfoDialog::setMediaDialog(MediaDialog* mediaDialog){
+    m_mediaDialog = mediaDialog;
+    avatarLabel->setMediaDialog(m_mediaDialog);
+}
 
 void CurrentUserInfoDialog::on_switchMessageInterfaceToolButton_clicked()
 {
-    emit switchMessageInterfaceToolButton(currentUser);
+    if(!m_weChatWidget){
+        qDebug()<<"[CurrentUserInfoDialog::on_switchMessageInterfaceToolButton_clicked]控指针 m_weChatWidget";
+        return;
+    }
+    m_weChatWidget->on_switchtoMessageInterface(currentUser);
+    m_weChatWidget->close();
+    m_weChatWidget->show();
+    close();
 }
 

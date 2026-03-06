@@ -66,8 +66,8 @@ bool UserTable::saveCurrentUser(int reqId, const User &user)
         QSqlQuery insertNewUserQuery(*m_database);
         const QString insertSql = R"(
             INSERT OR REPLACE INTO users
-            (user_id, account, nickname, avatar, avatar_local_path, gender, region, signature, is_current)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (user_id, account, nickname, avatar, avatar_local_path, profile_cover, gender, region, signature, is_current)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         )";
         insertNewUserQuery.prepare(insertSql);
         // 绑定参数（与 User 结构体字段一一对应，避免SQL注入）
@@ -76,6 +76,7 @@ bool UserTable::saveCurrentUser(int reqId, const User &user)
         insertNewUserQuery.addBindValue(user.nickname);
         insertNewUserQuery.addBindValue(user.avatar);
         insertNewUserQuery.addBindValue(user.avatarLocalPath);
+        insertNewUserQuery.addBindValue(user.profile_cover);
         insertNewUserQuery.addBindValue(user.gender);
         insertNewUserQuery.addBindValue(user.region);
         insertNewUserQuery.addBindValue(user.signature);
@@ -146,14 +147,15 @@ void UserTable::saveUser(int reqId, const User &user)
     QSqlQuery q(*m_database);
     q.prepare(R"(
         INSERT OR REPLACE INTO users
-        (user_id, account, nickname, avatar, avatar_local_path, gender, region, signature, is_current)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (user_id, account, nickname, avatar, avatar_local_path, profile_cover, gender, region, signature, is_current)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     )");
     q.addBindValue(user.userId);
     q.addBindValue(user.account);
     q.addBindValue(user.nickname);
     q.addBindValue(user.avatar);
     q.addBindValue(user.avatarLocalPath);
+    q.addBindValue(user.profile_cover);
     q.addBindValue(user.gender);
     q.addBindValue(user.region);
     q.addBindValue(user.signature);
@@ -203,7 +205,6 @@ void UserTable::getUser(int reqId, qint64 userId)
 }
 
 // ----- 辅助查询 -----
-
 void UserTable::getUserByAccount(int reqId, const QString &account)
 {
     if (!ensureDbOpen(reqId)) { emit userByAccountLoaded(reqId, User()); return; }

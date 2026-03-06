@@ -29,7 +29,7 @@ public:
 
     ~MediaDialog();
     void playSinglePixmap(const QPixmap &pixmap);
-    void playMedia(const QString &path, const QString &mediaType);
+    void playSingleVideo(QString path);
     void playNextMedia();                            // 播放下一个媒体
     void playPreviousMedia();                        // 播放上一个媒体
     void setMediaItems(const QList<MediaItem>& items);
@@ -63,6 +63,8 @@ private:
     Ui::MediaDialog *ui;
     QSplitter *splitter;
     QStackedWidget *mediaStackedWidget;
+    void playMedia(const QString &path, const QString &mediaType);
+
 
     // 窗口相关
     bool m_isOnTop; // 记录当前是否置顶

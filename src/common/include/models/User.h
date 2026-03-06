@@ -11,6 +11,7 @@ struct User {
     QString nickname;
     QString avatar;
     QString avatarLocalPath;
+    QString profile_cover;
     int gender = 0;
     QString region;
     QString signature;
@@ -24,6 +25,7 @@ struct User {
         nickname = query.value("nickname").toString();
         avatar = query.value("avatar").toString();
         avatarLocalPath = query.value("avatar_local_path").toString();
+        profile_cover = query.value("profile_cover").toString();
         gender = query.value("gender").toInt();
         region = query.value("region").toString();
         signature = query.value("signature").toString();
@@ -37,6 +39,7 @@ struct User {
             {"nickname", nickname},
             {"avatar", avatar},
             {"avatar_local_path", avatarLocalPath},
+            {"profile_cover", profile_cover},
             {"gender", gender},
             {"region", region},
             {"signature", signature},
@@ -51,6 +54,7 @@ struct User {
         user.nickname = json["nickname"].toString();
         user.avatar = json["avatar"].toString();
         user.avatarLocalPath = json["avatar_local_path"].toString();
+        user.profile_cover = json["profile_cover"].toString();
         user.gender = json["gender"].toInt();
         user.region = json["region"].toString();
         user.signature = json["signature"].toString();

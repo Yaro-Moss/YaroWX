@@ -11,6 +11,7 @@ class GroupMemberTable;
 class ConversationTable;
 class MessageTable;
 class MediaCacheTable;
+class LocalMomentTable;
 
 class DatabaseManager : public QObject {
     Q_OBJECT
@@ -25,6 +26,7 @@ public:
     ConversationTable *conversationTable() const { return m_conversationTable; }
     MessageTable *messageTable() const { return m_messageTable; }
     MediaCacheTable *mediaCacheTable() const { return m_mediaCacheTable; }
+    LocalMomentTable *localMomentTable() const { return m_localMomentTable; }
 
     void start();
     void stop();
@@ -39,6 +41,8 @@ private:
     ConversationTable *m_conversationTable = nullptr;
     MessageTable *m_messageTable = nullptr;
     MediaCacheTable *m_mediaCacheTable = nullptr;
+    LocalMomentTable *m_localMomentTable = nullptr;
+
 };
 
 #endif // DATABASEMANAGER_H

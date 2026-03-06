@@ -1,21 +1,36 @@
 #include "AudioPlayer.h"
 #include <QDebug>
+#include <QRandomGenerator>
+
+// 静态实例指针
+static AudioPlayer* s_instance = nullptr;
+
+AudioPlayer* AudioPlayer::instance()
+{
+    if (!s_instance) {
+        s_instance = new AudioPlayer();
+    }
+    return s_instance;
+}
 
 AudioPlayer::AudioPlayer(QObject *parent)
     : QObject(parent)
     , m_currentFilePath("")
+    , m_currentMessageId(-1)
 {
-    // 创建媒体播放器和音频输出
     m_mediaPlayer = new QMediaPlayer(this);
     m_audioOutput = new QAudioOutput(this);
-
-    // 设置音频输出
     m_mediaPlayer->setAudioOutput(m_audioOutput);
+    m_audioOutput->setVolume(1);
 
-    // 设置初始音量
-    m_audioOutput->setVolume(0.5); // 50% 音量
+    // 初始化波形数据（默认静态值）
+    m_waveformHeights = {8, 12, 16, 12};
 
-    // 连接信号槽
+    // 设置波形更新定时器（50ms间隔）
+    m_waveformTimer.setInterval(50);
+    connect(&m_waveformTimer, &QTimer::timeout, this, &AudioPlayer::updateWaveform);
+
+    // 连接信号
     connect(m_mediaPlayer, &QMediaPlayer::mediaStatusChanged,
             this, &AudioPlayer::onMediaStatusChanged);
     connect(m_mediaPlayer, &QMediaPlayer::playbackStateChanged,
@@ -33,7 +48,7 @@ AudioPlayer::~AudioPlayer()
     stop();
 }
 
-void AudioPlayer::play(const QString &filePath)
+void AudioPlayer::play(const QString &filePath, const qint64 &messageId)
 {
     if (filePath.isEmpty()) {
         emit errorOccurred("文件路径为空");
@@ -44,12 +59,14 @@ void AudioPlayer::play(const QString &filePath)
         emit errorOccurred("文件不存在: " + filePath);
         return;
     }
-    if(m_currentFilePath == filePath) {
-        stop();
+
+    // 如果点击的是同一条消息，则停止播放（或者暂停，根据需要选择）
+    if (m_currentMessageId == messageId && isPlaying()) {
+        pause();   // 或 stop()，这里我们选择暂停
         return;
     }
 
-    // 如果正在播放
+    // 如果正在播放其他消息，先停止
     if (m_mediaPlayer->playbackState() != QMediaPlayer::StoppedState) {
         stop();
     }
@@ -59,15 +76,18 @@ void AudioPlayer::play(const QString &filePath)
         m_mediaPlayer->setSource(QUrl::fromLocalFile(filePath));
         m_currentFilePath = filePath;
     }
+    m_currentMessageId = messageId;
 
     // 开始播放
     m_mediaPlayer->play();
+    m_waveformTimer.start();  // 启动波形动画
 }
 
 void AudioPlayer::pause()
 {
     if (m_mediaPlayer->playbackState() == QMediaPlayer::PlayingState) {
         m_mediaPlayer->pause();
+        m_waveformTimer.stop();
     }
 }
 
@@ -75,13 +95,18 @@ void AudioPlayer::resume()
 {
     if (m_mediaPlayer->playbackState() == QMediaPlayer::PausedState) {
         m_mediaPlayer->play();
+        m_waveformTimer.start();
     }
 }
 
 void AudioPlayer::stop()
 {
     m_mediaPlayer->stop();
+    m_waveformTimer.stop();
     m_currentFilePath.clear();
+    m_currentMessageId = -1;
+    // 恢复默认静态波形
+    m_waveformHeights = {8, 12, 16, 12};
 }
 
 void AudioPlayer::setVolume(int volume)
@@ -126,6 +151,21 @@ void AudioPlayer::setPosition(int position)
     m_mediaPlayer->setPosition(position);
 }
 
+qint64 AudioPlayer::currentMessageId() const
+{
+    return m_currentMessageId;
+}
+
+void AudioPlayer::updateWaveform()
+{
+    // 模拟波形变化：随机生成4个高度值（范围6~20）
+    m_waveformHeights.clear();
+    for (int i = 0; i < 4; ++i) {
+        m_waveformHeights.append(6 + QRandomGenerator::global()->bounded(15));
+    }
+    emit waveformUpdated();
+}
+
 void AudioPlayer::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
 {
     switch (status) {
@@ -135,13 +175,10 @@ void AudioPlayer::onMediaStatusChanged(QMediaPlayer::MediaStatus status)
     case QMediaPlayer::EndOfMedia:
         emit playbackFinished();
         qDebug() << "播放完成:" << m_currentFilePath;
-        m_currentFilePath = QString();
+        stop();  // 播放结束自动停止（清除状态）
         break;
     case QMediaPlayer::InvalidMedia:
         emit errorOccurred("无效的媒体文件: " + m_currentFilePath);
-        break;
-    case QMediaPlayer::NoMedia:
-        // 正常状态，无需处理
         break;
     default:
         break;
