@@ -146,7 +146,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/聊天.svg</normaloff>:/a/icons/聊天.svg</iconset>
         </property>
         <property name="iconSize">
@@ -206,7 +206,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/通讯录 .svg</normaloff>:/a/icons/通讯录 .svg</iconset>
         </property>
         <property name="iconSize">
@@ -260,7 +260,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/收藏.svg</normaloff>:/a/icons/收藏.svg</iconset>
         </property>
         <property name="iconSize">
@@ -320,7 +320,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/朋友圈 .svg</normaloff>:/a/icons/朋友圈 .svg</iconset>
         </property>
         <property name="iconSize">
@@ -380,7 +380,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/视频号.svg</normaloff>:/a/icons/视频号.svg</iconset>
         </property>
         <property name="iconSize">
@@ -440,7 +440,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/小程序 .svg</normaloff>:/a/icons/小程序 .svg</iconset>
         </property>
         <property name="iconSize">
@@ -513,7 +513,7 @@ QToolButton:disabled {
          <string>...</string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/悬浮窗.svg</normaloff>:/a/icons/悬浮窗.svg</iconset>
         </property>
         <property name="iconSize">
@@ -570,7 +570,7 @@ QToolButton:disabled {
     </string>
         </property>
         <property name="icon">
-         <iconset resource="../res/icon.qrc">
+         <iconset>
           <normaloff>:/a/icons/列表.svg</normaloff>:/a/icons/列表.svg</iconset>
         </property>
         <property name="iconSize">
@@ -773,7 +773,7 @@ QToolButton:disabled {
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../res/icon.qrc">
+             <iconset>
               <normaloff>:/a/icons/添加.svg</normaloff>:/a/icons/添加.svg</iconset>
             </property>
            </widget>
@@ -887,7 +887,7 @@ QPushButton:pressed {
                  <string>联系人管理</string>
                 </property>
                 <property name="icon">
-                 <iconset resource="../res/icon.qrc">
+                 <iconset>
                   <normaloff>:/a/icons/联系人管理.svg</normaloff>:/a/icons/联系人管理.svg</iconset>
                 </property>
                 <property name="iconSize">
@@ -1078,7 +1078,7 @@ QToolButton:pressed {
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../res/icon.qrc">
+             <iconset>
               <normaloff>:/a/icons/窗口置顶.svg</normaloff>:/a/icons/窗口置顶.svg</iconset>
             </property>
             <property name="iconSize">
@@ -1101,7 +1101,7 @@ QToolButton:pressed {
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../res/icon.qrc">
+             <iconset>
               <normaloff>:/a/icons/窗口最小化.svg</normaloff>:/a/icons/窗口最小化.svg</iconset>
             </property>
             <property name="iconSize">
@@ -1124,7 +1124,7 @@ QToolButton:pressed {
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../res/icon.qrc">
+             <iconset>
               <normaloff>:/a/icons/窗口最大化.svg</normaloff>:/a/icons/窗口最大化.svg</iconset>
             </property>
             <property name="iconSize">
@@ -1159,7 +1159,7 @@ QToolButton:pressed {
              <string>...</string>
             </property>
             <property name="icon">
-             <iconset resource="../res/icon.qrc">
+             <iconset>
               <normaloff>:/a/icons/窗口关闭.svg</normaloff>:/a/icons/窗口关闭.svg</iconset>
             </property>
             <property name="iconSize">
@@ -1469,7 +1469,7 @@ QToolButton:pressed {
                      <string>...</string>
                     </property>
                     <property name="icon">
-                     <iconset resource="../res/icon.qrc">
+                     <iconset>
                       <normaloff>:/a/icons/表情包.svg</normaloff>:/a/icons/表情包.svg</iconset>
                     </property>
                     <property name="iconSize">
@@ -1509,7 +1509,7 @@ QToolButton:pressed {
                      <string>...</string>
                     </property>
                     <property name="icon">
-                     <iconset resource="../res/icon.qrc">
+                     <iconset>
                       <normaloff>:/a/icons/收藏.svg</normaloff>:/a/icons/收藏.svg</iconset>
                     </property>
                     <property name="iconSize">
@@ -1550,7 +1550,7 @@ QToolButton:pressed {
                      <string>...</string>
                     </property>
                     <property name="icon">
-                     <iconset resource="../res/icon.qrc">
+                     <iconset>
                       <normaloff>:/a/icons/发送文件.svg</normaloff>:/a/icons/发送文件.svg</iconset>
                     </property>
                     <property name="iconSize">
@@ -1591,7 +1591,7 @@ QToolButton:pressed {
                      <string>...</string>
                     </property>
                     <property name="icon">
-                     <iconset resource="../res/icon.qrc">
+                     <iconset>
                       <normaloff>:/a/icons/截图.svg</normaloff>:/a/icons/截图.svg</iconset>
                     </property>
                     <property name="iconSize">
@@ -1632,7 +1632,7 @@ QToolButton:pressed {
                      <string>...</string>
                     </property>
                     <property name="icon">
-                     <iconset resource="../res/icon.qrc">
+                     <iconset>
                       <normaloff>:/a/icons/聊天记录.svg</normaloff>:/a/icons/聊天记录.svg</iconset>
                     </property>
                     <property name="iconSize">
@@ -1961,8 +1961,6 @@ QPushButton:pressed {
    <header>AvatarButton.h</header>
   </customwidget>
  </customwidgets>
- <resources>
-  <include location="../res/icon.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

@@ -1,4 +1,5 @@
 #include "ChatMessageDelegate.h"
+#include "ContactController.h"
 #include "FormatTime.h"
 #include <QFontMetrics>
 #include <QFileInfo>
@@ -117,6 +118,21 @@ QSize ChatMessageDelegate::sizeHint(const QStyleOptionViewItem &option,
     }
 }
 
+QRect ChatMessageDelegate::getAvatarRect(const QStyleOptionViewItem &option, bool isOwn) const
+{
+    const int avatarSize = AVATAR_SIZE;
+    const int margin = MARGIN;
+    if (isOwn) {
+        return QRect(option.rect.right() - margin - avatarSize,
+                     option.rect.top() + margin,
+                     avatarSize, avatarSize);
+    } else {
+        return QRect(option.rect.left() + margin,
+                     option.rect.top() + margin,
+                     avatarSize, avatarSize);
+    }
+}
+
 bool ChatMessageDelegate::editorEvent(QEvent *event, QAbstractItemModel *model,
                                       const QStyleOptionViewItem &option, const QModelIndex &index)
 {
@@ -137,6 +153,15 @@ bool ChatMessageDelegate::editorEvent(QEvent *event, QAbstractItemModel *model,
         }
         // 左键点击处理
         else if (mouseEvent->button() == Qt::LeftButton) {
+            // 先检查是否点击了头像
+            bool isOwn = index.data(ChatMessagesModel::IsOwnRole).toBool();
+            QRect avatarRect = getAvatarRect(option, isOwn);
+            if (avatarRect.contains(mouseEvent->pos())) {
+                Message message = index.data(ChatMessagesModel::FullMessageRole).value<Message>();
+                emit avatarClicked(message.senderId);
+                return true;
+            }
+            // 否则处理消息内容点击
             return handleLeftClick(mouseEvent, option, index);
         }
     }
@@ -619,12 +644,16 @@ void ChatMessageDelegate::paintAvatar(QPainter *painter, const QRect &avatarRect
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
 
+    QString nickname = QString();
+    if(m_contactController)
+        nickname = m_contactController->getContactFromModel(message.senderId).user.nickname;
+
+
     QPixmap avatarPixmap = QPixmap();
-    if(QFileInfo::exists(message.avatar)){
-        avatarPixmap = thumbnailManager->getThumbnail(message.avatar,
+    avatarPixmap = thumbnailManager->getThumbnail(message.avatar,
                                                  avatarRect.size(), 
-                                                 MediaType::Avatar, 5);
-    }
+                                                 MediaType::Avatar, 5,
+                                                 "", nickname);
 
     if(!avatarPixmap.isNull()) {
         painter->drawPixmap(avatarRect, avatarPixmap);

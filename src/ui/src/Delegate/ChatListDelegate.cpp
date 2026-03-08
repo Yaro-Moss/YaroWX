@@ -1,4 +1,5 @@
 #include "ChatListDelegate.h"
+#include "ContactController.h"
 #include "Conversation.h"
 #include <QPainter>
 #include <QDateTime>
@@ -44,6 +45,9 @@ void ChatListDelegate::paint(QPainter *painter, const QStyleOptionViewItem
     QString timeText = FormatTime(index.data(LastMessageTimeRole).toLongLong());
     int unreadCount = index.data(UnreadCountRole).toInt();
     QString avatarPath = index.data(AvatarLocalPathRole).toString();
+    qint64 id = index.data(TargetIdRole).toLongLong();
+    QString avatarText = QString();
+    if(m_contactController) avatarText = m_contactController->getContactFromModel(id).user.nickname;
 
     if(avatarPath.isEmpty()) {
         avatarPath = index.data(AvatarRole).toString();
@@ -90,10 +94,11 @@ void ChatListDelegate::paint(QPainter *painter, const QStyleOptionViewItem
     ThumbnailResourceManager* thumbnailManager = ThumbnailResourceManager::instance();
     painter->setRenderHint(QPainter::Antialiasing,true);
 
-    QPixmap avatar = QPixmap();
-    if(QFileInfo::exists(avatarPath)){
-        avatar = thumbnailManager->getThumbnail(avatarPath, QSize(avatarSize, avatarSize));
-    }
+    QPixmap avatar = thumbnailManager->getThumbnail(avatarPath,
+                                                    QSize(avatarSize, avatarSize),
+                                                    MediaType::Avatar,
+                                                    5, "", avatarText);
+
 
     if(!avatar.isNull()) {
         painter->drawPixmap(avatarRect, avatar);

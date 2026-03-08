@@ -22,6 +22,7 @@ public:
     void setCurrentUser(const Contact &user);
     void setWeChatWidget(WeChatWidget* weChatWidget){m_weChatWidget = weChatWidget;}
     void setMediaDialog(MediaDialog* mediaDialog);
+    void setPixmap(const QPixmap &pixmap);
 
 protected:
 

@@ -2,14 +2,21 @@
 #define CHATMESSAGESMODEL_H
 
 #include <QAbstractListModel>
+#include <QHash>
+#include <QList>
 #include <QVector>
 #include "Message.h"
 
 class ChatMessagesModel : public QAbstractListModel
 {
     Q_OBJECT
+    Q_PROPERTY(qint64 currentUserId READ currentUserId WRITE setCurrentUserId NOTIFY currentUserIdChanged)
+    Q_PROPERTY(qint64 conversationId READ conversationId WRITE setConversationId NOTIFY conversationIdChanged)
 
 public:
+    explicit ChatMessagesModel(QObject *parent = nullptr);
+    explicit ChatMessagesModel(int currentUserId, QObject *parent = nullptr);
+
     enum MessageRoles {
         MessageIdRole = Qt::UserRole + 1,
         ConversationIdRole,
@@ -38,10 +45,7 @@ public:
         FullMessageRole
     };
 
-    explicit ChatMessagesModel(QObject *parent = nullptr);
-    explicit ChatMessagesModel(int currentUserId, QObject *parent = nullptr);
-
-    // QAbstractItemModel interface
+    // QAbstractListModel 接口
     int rowCount(const QModelIndex &parent = QModelIndex()) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
     bool setData(const QModelIndex &index, const QVariant &value, int role) override;
@@ -53,29 +57,31 @@ public:
     void removeMessage(int row);
     void removeMessageById(qint64 messageId);
     void updateMessage(const Message &message);
-    Message getMessage(int row) const;
-    Message getMessageById(qint64 messageId) const;
-
-    // 批量操作
     void addMessages(const QVector<Message> &messages);
     void clearAll();
 
     // 查询方法
+    Message getMessage(int row) const;
+    Message getMessageById(qint64 messageId) const;
     int findMessageIndexById(qint64 messageId) const;
     bool containsMessage(qint64 messageId) const;
 
-    // 当前用户设置
+    // 测试用于当ai提示词
+    Q_INVOKABLE QVector<Message> getRecentMessages(int count = 9) const;
+
+    // 属性
     void setCurrentUserId(qint64 userId);
     qint64 currentUserId() const;
-
-    // 会话相关
     void setConversationId(qint64 conversationId);
     qint64 conversationId() const;
 
-    QVector<Message> m_messages; // 暂时放在public
+signals:
+    void currentUserIdChanged();
+    void conversationIdChanged();
 
 private:
-    // QVector<Message> m_messages;
+    QHash<qint64, Message> m_messages;       // 消息数据缓存（通过 messageId 快速访问）
+    QList<qint64> m_messageIds;               // 按显示顺序存储的消息ID列表
     qint64 m_currentUserId = 0;
     qint64 m_currentConversationId = 0;
 };

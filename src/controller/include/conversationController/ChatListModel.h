@@ -2,7 +2,8 @@
 #define CHATLISTMODEL_H
 
 #include <QAbstractListModel>
-#include <QVector>
+#include <QHash>
+#include <QList>
 #include "Conversation.h"
 
 class ChatListModel : public QAbstractListModel
@@ -35,9 +36,9 @@ public:
     QModelIndex getConversationIndex(qint64 conversationId) const;
     QModelIndex getConversationIndexByContactId(qint64 contactId) const;
 
-
 private:
-    QVector<Conversation> m_conversations;
+    QHash<qint64, Conversation> m_conversations;   // 会话数据缓存（通过ID快速访问）
+    QList<qint64> m_conversationIds;                // 按显示顺序存储的会话ID列表
 };
 
 #endif // CHATLISTMODEL_H

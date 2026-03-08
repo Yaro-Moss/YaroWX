@@ -18,6 +18,24 @@ RightPopover::~RightPopover()
 
 }
 
+void RightPopover::setWeChatWidget(WeChatWidget* weChatWidget)
+{
+    m_weChatWidget = weChatWidget;
+    ui->rightAvatarButton->setWeChatWidget(m_weChatWidget);
+}
+
+void RightPopover::setMediaDialog(MediaDialog* mediaDialog)
+{
+    m_mediaDialog = mediaDialog;
+    ui->rightAvatarButton->setMediaDialog(m_mediaDialog);
+}
+
+void RightPopover::setContact(const Contact &contact)
+{
+    Contact m_contact = contact;
+    ui->rightAvatarButton->setContact(contact);
+}
+
 bool RightPopover::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::MouseButtonPress) {

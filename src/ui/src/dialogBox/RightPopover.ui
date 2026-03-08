@@ -78,7 +78,7 @@
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_7">
         <item>
-         <widget class="QPushButton" name="rightAvatarButton">
+         <widget class="AvatarButton" name="rightAvatarButton">
           <property name="minimumSize">
            <size>
             <width>40</width>
@@ -105,7 +105,7 @@
            </size>
           </property>
           <property name="flat">
-           <bool>true</bool>
+           <bool>false</bool>
           </property>
          </widget>
         </item>
@@ -364,6 +364,13 @@ QToolButton:disabled {
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>AvatarButton</class>
+   <extends>QPushButton</extends>
+   <header>AvatarButton.h</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../../res/icon.qrc"/>
  </resources>

@@ -12,7 +12,6 @@ ContactTreeModel::ContactTreeModel(QObject *parent)
 
 void ContactTreeModel::setupFixedNodes()
 {
-    // 创建父节点并设置不可选中但可展开
     Qt::ItemFlags parentFlags = Qt::ItemIsEnabled;
 
     m_newFriendItem = new QStandardItem("新的朋友");
@@ -27,7 +26,6 @@ void ContactTreeModel::setupFixedNodes()
     m_serviceAccountItem->setFlags(parentFlags);
     appendRow(m_serviceAccountItem);
 
-    // 添加联系人分组节点
     m_contactGroupItem = new QStandardItem("联系人");
     m_contactGroupItem->setFlags(parentFlags);
     appendRow(m_contactGroupItem);
@@ -37,23 +35,21 @@ void ContactTreeModel::loadContacts(const QList<Contact>& contacts)
 {
     if (!m_contactGroupItem) return;
 
-    // 清空现有联系人
+    // 清空现有联系人（同时清空哈希表，因为子项将被销毁）
     if (m_contactGroupItem->rowCount() > 0) {
         m_contactGroupItem->removeRows(0, m_contactGroupItem->rowCount());
+        m_contactItems.clear();  // 所有 item 已销毁，哈希表必须清空
     }
 
-    // 设置联系人节点的标志 - 可选中
     Qt::ItemFlags contactFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
 
-    // 添加联系人
     for (const Contact &contact : contacts) {
         QStandardItem *contactItem = new QStandardItem();
-
-        // 设置联系人项为可选中
         contactItem->setFlags(contactFlags);
-
-        // 将联系人数据存储为UserRole
         contactItem->setData(QVariant::fromValue(contact), Qt::UserRole);
+
+        // 插入哈希表
+        m_contactItems.insert(contact.userId, contactItem);
 
         m_contactGroupItem->appendRow(contactItem);
     }
@@ -63,12 +59,21 @@ void ContactTreeModel::addContact(const Contact& contact)
 {
     if (!m_contactGroupItem) return;
 
-    // 设置联系人节点的标志 - 可选中
-    Qt::ItemFlags contactFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    // 检查是否已存在相同 userId 的联系人
+    if (m_contactItems.contains(contact.userId)) {
+        // 已存在 更新现有 item 的数据（保持指针不变，哈希表无需改动）
+        QStandardItem *existingItem = m_contactItems.value(contact.userId);
+        existingItem->setData(QVariant::fromValue(contact), Qt::UserRole);
+        return;
+    }
 
+    Qt::ItemFlags contactFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
     QStandardItem *contactItem = new QStandardItem();
     contactItem->setFlags(contactFlags);
     contactItem->setData(QVariant::fromValue(contact), Qt::UserRole);
+
+    // 插入哈希表
+    m_contactItems.insert(contact.userId, contactItem);
 
     m_contactGroupItem->appendRow(contactItem);
 }
@@ -76,11 +81,9 @@ void ContactTreeModel::addContact(const Contact& contact)
 bool ContactTreeModel::isParentNode(const QModelIndex &index) const
 {
     if (!index.isValid()) return false;
-
     QStandardItem *item = itemFromIndex(index);
     if (!item) return false;
 
-    // 检查是否是固定的父节点
     return (item == m_newFriendItem ||
             item == m_officialAccountItem ||
             item == m_serviceAccountItem ||
@@ -90,59 +93,33 @@ bool ContactTreeModel::isParentNode(const QModelIndex &index) const
 bool ContactTreeModel::isContactNode(const QModelIndex &index) const
 {
     if (!index.isValid()) return false;
-
     QStandardItem *item = itemFromIndex(index);
     if (!item) return false;
 
-    // 检查是否有联系人数据
     QVariant contactData = item->data(Qt::UserRole);
     return contactData.isValid() && contactData.canConvert<Contact>();
 }
 
-
 QModelIndex ContactTreeModel::findContactIndex(qint64 userId) const
 {
-    if (!m_contactGroupItem) return QModelIndex();
-
-    for (int row = 0; row < m_contactGroupItem->rowCount(); ++row) {
-        QStandardItem* contactItem = m_contactGroupItem->child(row);
-        Contact contact = contactItem->data(Qt::UserRole).value<Contact>();
-
-        if (contact.userId == userId) {
-            return contactItem->index();
-        }
+    QStandardItem *item = m_contactItems.value(userId, nullptr);
+    if (item) {
+        return item->index();
     }
     return QModelIndex();
 }
 
 Contact ContactTreeModel::getContactById(qint64 userId) const
 {
+    QStandardItem *item = m_contactItems.value(userId, nullptr);
+    if (item) {
+        QVariant contactVar = item->data(Qt::UserRole);
+        if (contactVar.isValid() && contactVar.canConvert<Contact>()) {
+            return contactVar.value<Contact>();
+        }
+    }
+    // 返回一个表示无效的联系人
     Contact emptyContact;
     emptyContact.userId = -1;
-
-    // 校验分组节点有效性
-    if (!m_contactGroupItem) {
-        return emptyContact;
-    }
-
-    // 遍历查找联系人
-    for (int row = 0; row < m_contactGroupItem->rowCount(); ++row) {
-        QStandardItem* contactItem = m_contactGroupItem->child(row);
-        if (!contactItem) {
-            continue;
-        }
-
-        // 取出并校验Contact数据
-        QVariant contactVar = contactItem->data(Qt::UserRole);
-        if (!contactVar.isValid() || !contactVar.canConvert<Contact>()) {
-            continue;
-        }
-
-        Contact contact = contactVar.value<Contact>();
-        if (contact.userId == userId) {
-            return contact;
-        }
-    }
-
     return emptyContact;
 }

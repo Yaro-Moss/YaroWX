@@ -1,10 +1,12 @@
 #include "AvatarButton.h"
 #include "CurrentUserInfoDialog.h"
+#include "UserInfoWidget.h"
 #include <QPainter>
 #include <QPainterPath>
 #include <QFont>
 #include <QFontMetrics>
 #include <QDebug>
+#include <qboxlayout.h>
 
 AvatarButton::AvatarButton(QWidget *parent)
     : QAbstractButton(parent)
@@ -16,13 +18,34 @@ AvatarButton::AvatarButton(QWidget *parent)
     setContentsMargins(0, 0, 0, 0);
 
     connect(this, &AvatarButton::clicked, this, [this](){
-        CurrentUserInfoDialog *currentUserInfoDialog = new CurrentUserInfoDialog(this);
-        currentUserInfoDialog->setAttribute(Qt::WA_DeleteOnClose);
-        currentUserInfoDialog->setCurrentUser(m_contact);
-        QPoint btnGlobalPos = this->mapToGlobal(QPoint(0,0));
-        currentUserInfoDialog->showAtPos(QPoint(btnGlobalPos.x() + width(), btnGlobalPos.y()));
-        currentUserInfoDialog->setWeChatWidget(m_weChatWidget);
-        currentUserInfoDialog->setMediaDialog(m_mediaDialog);
+        if(m_contact.user.isCurrent){
+            CurrentUserInfoDialog *currentUserInfoDialog = new CurrentUserInfoDialog(this);
+            currentUserInfoDialog->setAttribute(Qt::WA_DeleteOnClose);
+            currentUserInfoDialog->setCurrentUser(m_contact);
+            QPoint btnGlobalPos = this->mapToGlobal(QPoint(0,0));
+            currentUserInfoDialog->showAtPos(QPoint(btnGlobalPos.x() + width(), btnGlobalPos.y()));
+            currentUserInfoDialog->setWeChatWidget(m_weChatWidget);
+            currentUserInfoDialog->setMediaDialog(m_mediaDialog);
+        }
+        else{
+            ClickClosePopup *popup = new ClickClosePopup;
+
+            QVBoxLayout *contentLayout = new QVBoxLayout(popup);
+            contentLayout->setContentsMargins(1, 1, 1, 1);
+            contentLayout->setSpacing(0);
+            contentLayout->setAlignment(Qt::AlignCenter);
+
+            UserInfoWidget *userInfoWidget = new UserInfoWidget;
+            userInfoWidget->setWeChatWidget(m_weChatWidget);
+            userInfoWidget->setMediaDialog(m_mediaDialog);
+            userInfoWidget->setSelectedContact(m_contact);
+
+            contentLayout->addWidget(userInfoWidget);
+            popup->setFixedWidth(325);
+            popup->setFixedHeight(490);
+            popup->enableClickCloseFeature();
+            popup->showAtPos(QCursor::pos());
+        }
     });
 }
 
@@ -131,7 +154,6 @@ void AvatarButton::paintEvent(QPaintEvent *event)
     QRect drawRect = this->rect();
     if (drawRect.isEmpty()) return;
 
-    QPixmap avatarPixmap;
     // 加载头像图片
     if (m_contact.isValid()) {
         avatarPixmap = QPixmap(m_contact.user.avatarLocalPath);
@@ -141,7 +163,7 @@ void AvatarButton::paintEvent(QPaintEvent *event)
 
     // 图片加载失败则生成默认头像（圆角严格匹配m_radius）
     if (avatarPixmap.isNull()) {
-        avatarPixmap = generateDefaultAvatar(drawRect.size(), getValidNickname());
+        avatarPixmap = generateDefaultAvatar(QSize(500,500), getValidNickname());
     }
 
     QPainterPath clipPath;
@@ -176,7 +198,7 @@ QSize AvatarButton::sizeHint() const
 }
 
 
-QPixmap AvatarButton::generateDefaultAvatar(const QSize& size, const QString& nickname)
+QPixmap AvatarButton::generateDefaultAvatar(const QSize& size, const QString& nickname, int radius)
 {
     QPixmap defaultAvatar(size);
     defaultAvatar.fill(Qt::transparent);
@@ -185,7 +207,7 @@ QPixmap AvatarButton::generateDefaultAvatar(const QSize& size, const QString& ni
     painter.setRenderHint(QPainter::Antialiasing, true);
 
     QPainterPath path;
-    path.addRoundedRect(QRectF(0, 0, size.width(), size.height()), m_radius, m_radius);
+    path.addRoundedRect(QRectF(0, 0, size.width(), size.height()), radius, radius);
     painter.setPen(Qt::NoPen);
     painter.setBrush(generateBgColorFromNickname(nickname));
     painter.drawPath(path);

@@ -29,10 +29,11 @@
    <string notr="true">QLabel{
 	font: 9pt &quot;等线&quot;;
 	color: rgb(147, 147, 147);
-background-color: rgb(255, 255, 255);
+	background-color: rgb(255, 255, 255);
 }
 QWidget{
-
+    border-left: none;   /* 移除左边框 */
+    border-right: none;  /* 移除右边框 */
 background-color: rgb(255, 255, 255);
 }</string>
   </property>

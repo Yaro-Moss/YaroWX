@@ -200,14 +200,25 @@ QPixmap ThumbnailResourceManager::processAvatar(const QString &resourcePath, con
         QPainterPath path;
         path.addRoundedRect(QRectF(0, 0, size.width(), size.height()), radius, radius);
 
-        // 根据名字生成背景颜色
+        // 根据名字生成个性化背景色
+        QColor bgColor;
+        if (name.isEmpty()) {
+            bgColor = QColor(210, 210, 210);
+        } else {
+            uint hash = qHash(name);
+            int hue = hash % 360;
+            int saturation = 80;
+            int lightness = 70;
+            bgColor = QColor::fromHsl(hue, saturation, lightness);
+        }
+
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(210,210,210));
+        painter.setBrush(bgColor);
         painter.drawPath(path);
 
-        // 绘制名字首字母
-        QString displayText = name.left(1).toUpper();
+        QString displayText = name.isEmpty() ? "U" : name.left(1).toUpper();
 
+        // 绘制名字首字母
         QFont font = painter.font();
         font.setBold(true);
 
@@ -221,8 +232,8 @@ QPixmap ThumbnailResourceManager::processAvatar(const QString &resourcePath, con
 
         // 绘制文字
         painter.drawText(QRect(0, 0, size.width(), size.height()),
-                             Qt::AlignCenter | Qt::TextSingleLine,
-                             displayText);
+                         Qt::AlignCenter | Qt::TextSingleLine,
+                         displayText);
         return defaultAvatar;
     } else {
         // 图片加载成功，处理原图
@@ -245,7 +256,6 @@ QPixmap ThumbnailResourceManager::processAvatar(const QString &resourcePath, con
         return result;
     }
 }
-
 
 QPixmap ThumbnailResourceManager::processImageThumb(const QString &resourcePath, const QSize& size,
                                                     const QString &iconPath)

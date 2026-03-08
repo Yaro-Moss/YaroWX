@@ -6,6 +6,7 @@
 #include <QMouseEvent>
 #include "ThumbnailResourceManager.h"
 #include "Message.h"
+class ContactController;
 
 
 class ChatMessageDelegate : public QStyledItemDelegate
@@ -24,13 +25,15 @@ public:
     bool editorEvent(QEvent *event, QAbstractItemModel *model,
                      const QStyleOptionViewItem &option, const QModelIndex &index) override;
 
+    void setContactController(ContactController *contactController){m_contactController=contactController;}
+
 signals:
     void mediaClicked(const qint64 &msgId, const qint64 &conversationId);
     void fileClicked(const QString &filePath);
     void voiceClicked(const QString &voicePath, const qint64 &messageId);
     void textClicked(const QString &text);
     void rightClicked(const QPoint& globalPos, const Message &message);
-
+    void avatarClicked(const qint64 &senderId);
 
 
 private slots:
@@ -76,6 +79,7 @@ private:
                            const bool &isOwn) const;
     bool handleLeftClick(QMouseEvent *mouseEvent, const QStyleOptionViewItem &option,
                          const QModelIndex &index);
+    QRect getAvatarRect(const QStyleOptionViewItem &option, bool isOwn) const;
 
 private:
     // 常量定义
@@ -94,6 +98,8 @@ private:
     static const int ICON_HEIGHT = 40;
 
     ThumbnailResourceManager *thumbnailManager;
+    ContactController *m_contactController;
+
 };
 
 #endif // CHATMESSAGEDELEGATE_H

@@ -1,9 +1,9 @@
 #include "CurrentUserInfoDialog.h"
-#include "ThumbnailResourceManager.h"
 #include "WeChatWidget.h"
 #include "ui_CurrentUserInfoDialog.h"
 #include <QPainter>
 #include <QPainterPath>
+#include "AvatarButton.h"
 
 CurrentUserInfoDialog::CurrentUserInfoDialog(QWidget *parent)
     : ClickClosePopup(parent)
@@ -12,6 +12,7 @@ CurrentUserInfoDialog::CurrentUserInfoDialog(QWidget *parent)
     , m_mediaDialog(nullptr)
 {
     ui->setupUi(this);
+    enableClickCloseFeature();
     avatarLabel = ui->avatarLabel;
     account = ui->account;
     region = ui->region;
@@ -27,18 +28,9 @@ CurrentUserInfoDialog::~CurrentUserInfoDialog()
 void CurrentUserInfoDialog::setCurrentUser(const Contact &user)
 {
     currentUser = user;
-    ThumbnailResourceManager* thumbnailManager = ThumbnailResourceManager::instance();
-
-    connect(thumbnailManager, &ThumbnailResourceManager::mediaLoaded, this,
-        [this, thumbnailManager](const QString& resourcePath, const QPixmap& media, MediaType type){
-
-        QPixmap avatar = thumbnailManager->getThumbnail(currentUser.user.avatarLocalPath,
-                                                QSize(500, 500), MediaType::Avatar,0);
-        avatarLabel ->setPixmap(avatar);
-    });
-
-    QPixmap avatar = thumbnailManager->getThumbnail(currentUser.user.avatarLocalPath,
-                                            QSize(500, 500), MediaType::Avatar,0);
+    QPixmap avatar = QPixmap(user.user.avatarLocalPath);
+    if(avatar.isNull())
+        avatar = AvatarButton::generateDefaultAvatar(QSize(500,500), currentUser.user.nickname);
     avatarLabel ->setPixmap(avatar);
     account->setText(currentUser.user.account);
     nickname->setText(currentUser.user.nickname);
@@ -48,6 +40,11 @@ void CurrentUserInfoDialog::setCurrentUser(const Contact &user)
 void CurrentUserInfoDialog::setMediaDialog(MediaDialog* mediaDialog){
     m_mediaDialog = mediaDialog;
     avatarLabel->setMediaDialog(m_mediaDialog);
+}
+
+void CurrentUserInfoDialog::setPixmap(const QPixmap &pixmap)
+{
+    avatarLabel ->setPixmap(pixmap);
 }
 
 void CurrentUserInfoDialog::on_switchMessageInterfaceToolButton_clicked()

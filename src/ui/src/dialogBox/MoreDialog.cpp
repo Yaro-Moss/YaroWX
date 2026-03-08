@@ -6,6 +6,8 @@ MoreDialog::MoreDialog(QWidget *parent)
     , ui(new Ui::MoreDialog)
 {
     ui->setupUi(this);
+    enableClickCloseFeature();
+
 }
 
 MoreDialog::~MoreDialog()

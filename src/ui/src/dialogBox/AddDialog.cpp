@@ -6,6 +6,7 @@ AddDialog::AddDialog(ContactController * contactController, QWidget *parent)
     , ui(new Ui::AddDialog)
 {
     ui->setupUi(this);
+    enableClickCloseFeature();
 }
 
 AddDialog::~AddDialog()

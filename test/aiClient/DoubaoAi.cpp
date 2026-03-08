@@ -54,21 +54,19 @@ QString DoubaoAI::DoubaoAI_request(QString& question)
         QByteArray reply_data = reply->readAll();
         //对返回的json数据进行解析
         QJsonObject obj = QJsonDocument::fromJson(reply_data).object();
-        //qDebug() << "Response:" << obj;
         QJsonArray choicesarray = obj.value("choices").toArray();
         if (!choicesarray.isEmpty()){
             QJsonObject choiceobj = choicesarray[0].toObject();
             if (choiceobj.contains("message") && choiceobj["message"].isObject()) {
                 QJsonObject messageobj = choiceobj["message"].toObject();
                 if (messageobj.contains("content") && messageobj["content"].isString()) {
-                    //qDebug() << "Content:" << context;
                     return messageobj["content"].toString();
                 }
             }
         }
-        return "哈哈哈哈哈哈哈";
+        return "ai返回数据为空！";
     } else {
-        return "哈哈哈哈哈哈哈";
+        return "忙碌着，有空会回复你。";
         qDebug() << "https request error:" << reply->errorString();
     }
 }

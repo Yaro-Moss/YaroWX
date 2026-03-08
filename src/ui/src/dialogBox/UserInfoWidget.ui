@@ -24,7 +24,7 @@
     <number>0</number>
    </property>
    <property name="leftMargin">
-    <number>10</number>
+    <number>11</number>
    </property>
    <property name="topMargin">
     <number>11</number>
@@ -66,7 +66,7 @@
           <number>0</number>
          </property>
          <property name="topMargin">
-          <number>6</number>
+          <number>0</number>
          </property>
          <property name="rightMargin">
           <number>5</number>
@@ -979,7 +979,7 @@ border-top: 1px solid #cccccc; /* 边框宽度+颜色+线型 */
   <customwidget>
    <class>ImgLabel</class>
    <extends>QLabel</extends>
-   <header location="global">ImgLabel.h</header>
+   <header>ImgLabel.h</header>
   </customwidget>
  </customwidgets>
  <resources>

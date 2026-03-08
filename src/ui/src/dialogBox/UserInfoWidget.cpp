@@ -1,6 +1,6 @@
 #include "UserInfoWidget.h"
-#include "ThumbnailResourceManager.h"
 #include "WeChatWidget.h"
+#include "AvatarButton.h"
 #include "ui_UserInfoWidget.h"
 
 UserInfoWidget::UserInfoWidget(QWidget *parent)
@@ -37,16 +37,10 @@ void UserInfoWidget::setSelectedContact(const Contact &contact)
 {
     m_contact = contact;
 
-    ThumbnailResourceManager* thumbnailManager = ThumbnailResourceManager::instance();
-    connect(thumbnailManager, &ThumbnailResourceManager::mediaLoaded, this,
-        [this, thumbnailManager](const QString& resourcePath, const QPixmap& media, MediaType type){
-        QPixmap avatar = thumbnailManager->getThumbnail(m_contact.user.avatarLocalPath,
-                                                QSize(500, 500), MediaType::Avatar,0, m_contact.remarkName);
-        avatarLabel ->setPixmap(avatar);
-    });
-    QPixmap avatar = thumbnailManager->getThumbnail(m_contact.user.avatarLocalPath,
-                                            QSize(500, 500), MediaType::Avatar,0,"",m_contact.remarkName);
-    avatarLabel ->setPixmap(avatar);
+    QPixmap avatar (m_contact.user.avatarLocalPath);
+    if(avatar.isNull())
+        avatar = AvatarButton::generateDefaultAvatar(QSize(500, 500), m_contact.user.nickname);
+    avatarLabel->setPixmap(avatar);
 
     remarkNameLable->setText(m_contact.remarkName);
     nicknameLable->setText(m_contact.user.nickname);

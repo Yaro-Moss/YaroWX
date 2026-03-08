@@ -45,15 +45,17 @@ public:
     void setNameModeFont(const QFont &font);
     void setNameModeColor(const QColor &color);
 
+    // 辅助函数：生成带首字母的默认头像（严格匹配按钮圆角）
+    static QPixmap generateDefaultAvatar(const QSize& size, const QString& nickname, int radius=0);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     QSize sizeHint() const override;  // 重写以便名称模式自适应文本宽度
 
 private:
-    // 辅助函数：生成带首字母的默认头像（严格匹配按钮圆角）
-    QPixmap generateDefaultAvatar(const QSize& size, const QString& nickname);
+
     // 辅助函数：根据昵称生成个性化背景色
-    QColor generateBgColorFromNickname(const QString& nickname);
+    static QColor generateBgColorFromNickname(const QString& nickname);
     // 辅助函数：获取当前有效的昵称（优先Contact，其次User）
     QString getValidNickname() const;
     // 辅助函数：获取名称模式下要显示的文本（优先 remarkName，其次 nickname）
@@ -70,6 +72,9 @@ private:
 
     WeChatWidget *m_weChatWidget;
     MediaDialog *m_mediaDialog;
+
+    QPixmap avatarPixmap;
+
 };
 
 #endif // AVATARBUTTON_H

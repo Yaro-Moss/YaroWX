@@ -6,6 +6,8 @@ FloatingDialog::FloatingDialog(QWidget *parent)
     , ui(new Ui::FloatingDialog)
 {
     ui->setupUi(this);
+    enableClickCloseFeature();
+
 }
 
 FloatingDialog::~FloatingDialog()

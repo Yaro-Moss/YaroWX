@@ -27,7 +27,6 @@
 #include <QUrl>
 #include <QFileInfo>
 #include <QStandardPaths>
-#include "ThumbnailResourceManager.h"
 #include <QCheckBox>
 #include <QFileDialog>
 #include "MessageTextEdit.h"
@@ -97,6 +96,7 @@ void WeChatWidget::initChatList()
 {
     chatListView = ui->chatListView;
     chatListDelegate = new ChatListDelegate(chatListView);
+    chatListDelegate->setContactController(contactController);
     chatListView->setItemDelegate(chatListDelegate);
     chatListView->setModel(conversationController->chatListModel());
 
@@ -170,6 +170,7 @@ void WeChatWidget::initMessageList()
 {
     chatMessageListView = ui->messageListView;
     chatMessageDelegate = new ChatMessageDelegate(chatMessageListView);
+    chatMessageDelegate->setContactController(contactController);
     chatMessageListView->setModel(messageController->messagesModel());
     chatMessageListView->setItemDelegate(chatMessageDelegate);
 
@@ -257,6 +258,38 @@ void WeChatWidget::initMessageList()
             [this]() { chatMessageListView->viewport()->update(); });
     connect(audioPlayer, &AudioPlayer::waveformUpdated, chatMessageListView,
             [this]() { chatMessageListView->viewport()->update(); });
+    connect(chatMessageDelegate, &ChatMessageDelegate::avatarClicked, this,
+        [this](const qint64 &senderId){
+                Contact contact = contactController->getContactFromModel(senderId);
+                if(contact.user.isCurrent){
+                    CurrentUserInfoDialog *currentUserInfoDialog = new CurrentUserInfoDialog(this);
+                    currentUserInfoDialog->setAttribute(Qt::WA_DeleteOnClose);
+                    currentUserInfoDialog->setCurrentUser(contact);
+                    QPoint btnGlobalPos = this->mapToGlobal(QPoint(0,0));
+                    currentUserInfoDialog->showAtPos(QPoint(btnGlobalPos.x() + width(), btnGlobalPos.y()));
+                    currentUserInfoDialog->setWeChatWidget(this);
+                    currentUserInfoDialog->setMediaDialog(mediaDialog);
+                }
+                else{
+                    ClickClosePopup *popup = new ClickClosePopup;
+
+                    QVBoxLayout *contentLayout = new QVBoxLayout(popup);
+                    contentLayout->setContentsMargins(1, 1, 1, 1);
+                    contentLayout->setSpacing(0);
+                    contentLayout->setAlignment(Qt::AlignCenter);
+
+                    UserInfoWidget *userInfoWidget = new UserInfoWidget;
+                    userInfoWidget->setWeChatWidget(this);
+                    userInfoWidget->setMediaDialog(mediaDialog);
+                    userInfoWidget->setSelectedContact(contact);
+
+                    contentLayout->addWidget(userInfoWidget);
+                    popup->setFixedWidth(325);
+                    popup->setFixedHeight(490);
+                    popup->enableClickCloseFeature();
+                    popup->showAtPos(QCursor::pos());
+                }
+    });
 }
 
 // 当前登录用户
@@ -647,23 +680,9 @@ void WeChatWidget::on_rightDialogToolButton_clicked()
         connect(rightPopover,&RightPopover::cloesDialog,this, &WeChatWidget::on_rightDialogToolButton_clicked);
         rightPopover->setAttribute(Qt::WA_DeleteOnClose);
 
-        // 在媒体加载器里异步获取头像
-        QString avatarLocalPath = currentConversation.avatarLocalPath;
-        ThumbnailResourceManager* mediaManager = ThumbnailResourceManager::instance();
-        connect(mediaManager, &ThumbnailResourceManager::mediaLoaded,
-            this, [this,mediaManager,avatarLocalPath](const QString& resourcePath, const QPixmap& media, MediaType type){
-            if(avatarLocalPath == resourcePath && type == MediaType::Avatar){
-                if(rightPopover){
-                    QPixmap friendAvatar = mediaManager->getThumbnail(avatarLocalPath, QSize(40, 40));
-                    rightPopover->findChild<QPushButton*>("rightAvatarButton")
-                        ->setIcon(QIcon(friendAvatar));
-                }
-            }
-        });
-        QPixmap friendAvatar = mediaManager->getThumbnail(avatarLocalPath, QSize(40, 40),
-                                                          MediaType::Avatar, 5,"", currentConversation.title);
-        rightPopover->findChild<QPushButton*>("rightAvatarButton")
-            ->setIcon(QIcon(friendAvatar));
+        rightPopover->setContact(contactController->getContactFromModel(currentConversation.userId));
+        rightPopover->setMediaDialog(mediaDialog);
+        rightPopover->setWeChatWidget(this);
 
         QCheckBox *isTopCheckBox = rightPopover->findChild<QCheckBox*>("isTopCheckBox");
         isTopCheckBox->setChecked(currentConversation.isTop);
@@ -692,10 +711,10 @@ void WeChatWidget::on_rightDialogToolButton_clicked()
 void WeChatWidget::rightStackedWidgetPageSizeChange()
 {
     if(rightPopover){
-        int rpfX = this->findChild<QWidget*>("rightStackedWidgetPage0")->width() - 254;
+        int rpfX = ui->rightStackedWidgetPage0->width() - 254;
         int rpfY = rightPopover->pos().y();
         int rpfWidth = 254;
-        int rpfHeight = this->findChild<QWidget*>("rightStackedWidgetPage0")->height();
+        int rpfHeight = ui->rightStackedWidgetPage0->height();
         rightPopover->setGeometry(rpfX,rpfY,rpfWidth,rpfHeight);
     }
 }
@@ -833,7 +852,6 @@ void WeChatWidget::on_sendPushButton_clicked()
 
     if(!text.isEmpty()){
         messageController->sendTextMessage(text);
-        qDebug()<<"发送文本："<<text;
     }
 
     // 发送完成后可以清空内容

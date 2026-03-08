@@ -17,15 +17,16 @@ int ChatMessagesModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())
         return 0;
-    return m_messages.size();
+    return m_messageIds.size();
 }
 
 QVariant ChatMessagesModel::data(const QModelIndex &index, int role) const
 {
-    if (!index.isValid() || index.row() >= m_messages.size())
+    if (!index.isValid() || index.row() >= m_messageIds.size())
         return QVariant();
 
-    const Message &message = m_messages.at(index.row());
+    qint64 id = m_messageIds.at(index.row());
+    const Message &message = m_messages.value(id);
 
     switch (role) {
     case MessageIdRole:
@@ -78,7 +79,7 @@ QVariant ChatMessagesModel::data(const QModelIndex &index, int role) const
         return message.formattedDuration();
     case FullMessageRole:
         return QVariant::fromValue(message);
-    case Qt::DisplayRole:
+    case Qt::DisplayRole: {
         // 显示用文本预览
         QString preview;
         switch (message.type) {
@@ -104,16 +105,18 @@ QVariant ChatMessagesModel::data(const QModelIndex &index, int role) const
             preview.left(50)
             );
     }
-
-    return QVariant();
+    default:
+        return QVariant();
+    }
 }
 
 bool ChatMessagesModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
-    if (!index.isValid() || index.row() >= m_messages.size())
+    if (!index.isValid() || index.row() >= m_messageIds.size())
         return false;
 
-    Message &message = m_messages[index.row()];
+    qint64 id = m_messageIds.at(index.row());
+    Message &message = m_messages[id];
 
     switch (role) {
     case ContentRole:
@@ -181,69 +184,130 @@ QHash<int, QByteArray> ChatMessagesModel::roleNames() const
 
 void ChatMessagesModel::addMessage(const Message &message)
 {
-    beginInsertRows(QModelIndex(), m_messages.size(), m_messages.size());
-    m_messages.append(message);
+    qint64 id = message.messageId;
+    if (m_messages.contains(id)) {
+        // 已存在：更新数据，位置不变
+        m_messages[id] = message;
+        int row = m_messageIds.indexOf(id);
+        if (row != -1) {
+            QModelIndex idx = createIndex(row, 0);
+            emit dataChanged(idx, idx);
+        }
+        return;
+    }
+
+    // 新消息：追加到末尾（假设外部保证顺序）
+    beginInsertRows(QModelIndex(), m_messageIds.size(), m_messageIds.size());
+    m_messages.insert(id, message);
+    m_messageIds.append(id);
     endInsertRows();
 }
 
 void ChatMessagesModel::insertMessage(int row, const Message &message)
 {
-    if (row < 0 || row > m_messages.size()) return;
+    if (row < 0 || row > m_messageIds.size())
+        return;
 
+    qint64 id = message.messageId;
+    if (m_messages.contains(id)) {
+        // 已存在：可能需要移动位置
+        int oldRow = m_messageIds.indexOf(id);
+        if (oldRow == row) {
+            // 位置相同，只更新数据
+            m_messages[id] = message;
+            QModelIndex idx = createIndex(row, 0);
+            emit dataChanged(idx, idx);
+        } else {
+            // 位置不同：先更新数据，再移动行
+            m_messages[id] = message;
+            if (beginMoveRows(QModelIndex(), oldRow, oldRow, QModelIndex(), row > oldRow ? row + 1 : row)) {
+                m_messageIds.move(oldRow, row);
+                endMoveRows();
+            }
+        }
+        return;
+    }
+
+    // 新消息：插入指定位置
     beginInsertRows(QModelIndex(), row, row);
-    m_messages.insert(row, message);
+    m_messages.insert(id, message);
+    m_messageIds.insert(row, id);
     endInsertRows();
 }
 
 void ChatMessagesModel::removeMessage(int row)
 {
-    if (row < 0 || row >= m_messages.size()) return;
+    if (row < 0 || row >= m_messageIds.size())
+        return;
 
     beginRemoveRows(QModelIndex(), row, row);
-    m_messages.removeAt(row);
+    qint64 id = m_messageIds.at(row);
+    m_messages.remove(id);
+    m_messageIds.removeAt(row);
     endRemoveRows();
 }
 
 void ChatMessagesModel::removeMessageById(qint64 messageId)
 {
-    int index = findMessageIndexById(messageId);
-    if (index != -1) {
-        removeMessage(index);
-    }
+    int row = m_messageIds.indexOf(messageId);
+    if (row != -1)
+        removeMessage(row);
 }
 
 void ChatMessagesModel::updateMessage(const Message &message)
 {
-    int index = findMessageIndexById(message.messageId);
-    if (index != -1) {
-        m_messages[index] = message;
-        QModelIndex modelIndex = createIndex(index, 0);
-        emit dataChanged(modelIndex, modelIndex);
+    qint64 id = message.messageId;
+    if (!m_messages.contains(id))
+        return;
+
+    m_messages[id] = message;
+    int row = m_messageIds.indexOf(id);
+    if (row != -1) {
+        QModelIndex idx = createIndex(row, 0);
+        emit dataChanged(idx, idx);
     }
 }
 
 Message ChatMessagesModel::getMessage(int row) const
 {
-    if (row >= 0 && row < m_messages.size())
-        return m_messages.at(row);
+    if (row >= 0 && row < m_messageIds.size()) {
+        qint64 id = m_messageIds.at(row);
+        return m_messages.value(id);
+    }
     return Message();
 }
 
 Message ChatMessagesModel::getMessageById(qint64 messageId) const
 {
-    int index = findMessageIndexById(messageId);
-    if (index != -1) {
-        return m_messages.at(index);
-    }
-    return Message();
+    return m_messages.value(messageId);
 }
 
 void ChatMessagesModel::addMessages(const QVector<Message> &messages)
 {
-    if (messages.isEmpty()) return;
+    if (messages.isEmpty())
+        return;
 
-    beginInsertRows(QModelIndex(), m_messages.size(), m_messages.size() + messages.size() - 1);
-    m_messages.append(messages);
+    // 批量添加：过滤出确实不存在的消息，然后一次性插入末尾
+    QVector<Message> newMessages;
+    for (const Message &msg : messages) {
+        if (!m_messages.contains(msg.messageId)) {
+            newMessages.append(msg);
+        } else {
+            // 已存在的消息单独更新（位置不变）
+            updateMessage(msg);
+        }
+    }
+
+    if (newMessages.isEmpty())
+        return;
+
+    int firstRow = m_messageIds.size();
+    int lastRow = firstRow + newMessages.size() - 1;
+    beginInsertRows(QModelIndex(), firstRow, lastRow);
+    for (const Message &msg : newMessages) {
+        m_messages.insert(msg.messageId, msg);
+        m_messageIds.append(msg.messageId);
+    }
     endInsertRows();
 }
 
@@ -251,32 +315,43 @@ void ChatMessagesModel::clearAll()
 {
     beginResetModel();
     m_messages.clear();
+    m_messageIds.clear();
     endResetModel();
 }
 
 int ChatMessagesModel::findMessageIndexById(qint64 messageId) const
 {
-    for (int i = 0; i < m_messages.size(); ++i) {
-        if (m_messages.at(i).messageId == messageId) {
-            return i;
-        }
-    }
-    return -1;
+    return m_messageIds.indexOf(messageId);
 }
 
 bool ChatMessagesModel::containsMessage(qint64 messageId) const
 {
-    return findMessageIndexById(messageId) != -1;
+    return m_messages.contains(messageId);
+}
+
+QVector<Message> ChatMessagesModel::getRecentMessages(int count) const
+{
+    QVector<Message> result;
+    int total = m_messageIds.size();
+    int takeCount = qMin(count, total);
+    result.reserve(takeCount);
+    // 从消息列表末尾向前取
+    for (int i = 0; i < takeCount; ++i) {
+        qint64 id = m_messageIds.at(total - 1 - i);
+        result.append(m_messages.value(id));
+    }
+    return result;
 }
 
 void ChatMessagesModel::setCurrentUserId(qint64 userId)
 {
     if (m_currentUserId != userId) {
         m_currentUserId = userId;
-        // 刷新所有消息的isOwn状态
-        if (!m_messages.isEmpty()) {
-            emit dataChanged(createIndex(0, 0), createIndex(m_messages.size() - 1, 0), {IsOwnRole});
+        if (!m_messageIds.isEmpty()) {
+            // 刷新所有消息的 isOwn 状态
+            emit dataChanged(createIndex(0, 0), createIndex(m_messageIds.size() - 1, 0), {IsOwnRole});
         }
+        emit currentUserIdChanged();
     }
 }
 
@@ -287,7 +362,10 @@ qint64 ChatMessagesModel::currentUserId() const
 
 void ChatMessagesModel::setConversationId(qint64 conversationId)
 {
-    m_currentConversationId = conversationId;
+    if (m_currentConversationId != conversationId) {
+        m_currentConversationId = conversationId;
+        emit conversationIdChanged();
+    }
 }
 
 qint64 ChatMessagesModel::conversationId() const

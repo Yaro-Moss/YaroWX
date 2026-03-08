@@ -141,12 +141,8 @@ void MessageController::sendTextMessage(const QString& content)
 
 
     // ---------------------临时测试-------------
-    const QVector<Message> &original = m_messagesModel->m_messages;
-    QVector<Message> result;
-    result.reserve(qMin(9, original.size()));
-    std::copy_n(original.rbegin(), qMin(9, original.size()), std::back_inserter(result));
-    emit send(result);
-
+    QVector<Message> recent = m_messagesModel->getRecentMessages(9); // 获取最近9条消息
+    emit send(recent);
     //-------------------------------------------------
 }
 
@@ -188,11 +184,8 @@ void MessageController::sendImageMessage(const qint64 conversationId,
                               Q_ARG(int, reqId),
                               Q_ARG(Message, message));
     // ---------------------临时测试-------------
-    const QVector<Message> &original = m_messagesModel->m_messages;
-    QVector<Message> result;
-    result.reserve(qMin(9, original.size()));
-    std::copy_n(original.rbegin(), qMin(9, original.size()), std::back_inserter(result));
-    emit send(result);
+    QVector<Message> recent = m_messagesModel->getRecentMessages(9); // 获取最近9条消息
+    emit send(recent);
     //-------------------------------------------------
 }
 
@@ -233,11 +226,8 @@ void MessageController::sendVideoMessage(qint64 conversationId,
                               Q_ARG(Message, message));
 
     // ---------------------临时测试-------------
-    const QVector<Message> &original = m_messagesModel->m_messages;
-    QVector<Message> result;
-    result.reserve(qMin(9, original.size()));
-    std::copy_n(original.rbegin(), qMin(9, original.size()), std::back_inserter(result));
-    emit send(result);
+    QVector<Message> recent = m_messagesModel->getRecentMessages(9); // 获取最近9条消息
+    emit send(recent);
     //-------------------------------------------------
 }
 
@@ -272,11 +262,8 @@ void MessageController::sendFileMessage(const qint64 conversationId,
                               Q_ARG(Message, message));
 
     // ---------------------临时测试-------------
-    const QVector<Message> &original = m_messagesModel->m_messages;
-    QVector<Message> result;
-    result.reserve(qMin(9, original.size()));
-    std::copy_n(original.rbegin(), qMin(9, original.size()), std::back_inserter(result));
-    emit send(result);
+    QVector<Message> recent = m_messagesModel->getRecentMessages(9); // 获取最近9条消息
+    emit send(recent);
     //-------------------------------------------------
 }
 
@@ -300,11 +287,8 @@ void MessageController::sendVoiceMessage(const QString& filePath, int duration)
                               Q_ARG(Message, message));
 
     // ---------------------临时测试-------------
-    const QVector<Message> &original = m_messagesModel->m_messages;
-    QVector<Message> result;
-    result.reserve(qMin(9, original.size()));
-    std::copy_n(original.rbegin(), qMin(9, original.size()), std::back_inserter(result));
-    emit send(result);
+    QVector<Message> recent = m_messagesModel->getRecentMessages(9); // 获取最近9条消息
+    emit send(recent);
     //-------------------------------------------------
 }
 
