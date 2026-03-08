@@ -115,7 +115,7 @@ void MomentEditWidget::refreshContentLayout()
     switch (curType) {
     case FileType::Image:
         // 遍历图片路径，添加图片Label
-        for (const QString& path : m_selectedFilePaths) {
+        for (const QString& path : std::as_const(m_selectedFilePaths)) {
             m_flowLayout->addWidget(createImageLabel(path));
         }
         break;

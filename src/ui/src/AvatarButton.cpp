@@ -9,7 +9,7 @@
 #include <qboxlayout.h>
 
 AvatarButton::AvatarButton(QWidget *parent)
-    : QAbstractButton(parent)
+    : QPushButton(parent)
     , m_weChatWidget(nullptr)
     , m_mediaDialog(nullptr)
 {

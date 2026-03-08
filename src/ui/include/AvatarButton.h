@@ -2,15 +2,15 @@
 #define AVATARBUTTON_H
 
 #include "Contact.h"
-#include <QAbstractButton>
 #include <QPixmap>
 #include <QColor>
 #include <QFont>
+#include <qpushbutton.h>
 
 class WeChatWidget;
 class MediaDialog;
 
-class AvatarButton : public QAbstractButton
+class AvatarButton : public QPushButton
 {
     Q_OBJECT
     Q_PROPERTY(int radius READ radius WRITE setRadius)
