@@ -113,7 +113,6 @@ protected:
 
         if (event->type() == QEvent::MouseButtonPress) {
             QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
-            // Qt5 替换为 mouseEvent->globalPos()
             QPoint globalPos = mouseEvent->globalPosition().toPoint();
             if (isVisible() && !geometry().contains(globalPos)) {
                 close();

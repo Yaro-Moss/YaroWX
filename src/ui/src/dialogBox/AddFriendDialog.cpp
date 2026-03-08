@@ -88,7 +88,7 @@ void AddFriendDialog::mouseMoveEvent(QMouseEvent *event)
 {
     // 仅当拖动标记为true，且左键按住时执行拖动
     if (m_isDragging && (event->buttons() & Qt::LeftButton)) {
-        QPoint newWindowPos = event->globalPos() - m_dragStartPos;
+        QPoint newWindowPos = event->globalPosition().toPoint() - m_dragStartPos;
         this->move(newWindowPos);
     }
     QDialog::mouseMoveEvent(event);
