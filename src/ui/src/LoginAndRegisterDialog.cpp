@@ -1,19 +1,20 @@
 #include "LoginAndRegisterDialog.h"
+#include "LoginManager.h"
 #include "ui_LoginAndRegisterDialog.h"
-
 #include <QPainter>
 #include <QPainterPath>
 #include <QMouseEvent>
 #include <QDebug>
 #include <QStackedWidget>
 #include <QAbstractButton>
-#include "LoginAndRegisterController.h"
+#include <QMessageBox>
 
 
-LoginAndRegisterDialog::LoginAndRegisterDialog(LoginAndRegisterController *loginAndRegisterController, QWidget *parent)
+LoginAndRegisterDialog::LoginAndRegisterDialog(LoginManager *loginManager, QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::LoginAndRegisterDialog)
     , m_isDragging(false)
+    , m_loginManager(loginManager)
 {
     ui->setupUi(this);
 
@@ -30,11 +31,15 @@ LoginAndRegisterDialog::LoginAndRegisterDialog(LoginAndRegisterController *login
         button->installEventFilter(this);
     }
 
+    connect(m_loginManager, &LoginManager::loginSuccess, this, &LoginAndRegisterDialog::onLoginSuccess);
+    connect(m_loginManager, &LoginManager::loginFailed, this, &LoginAndRegisterDialog::onLoginFailed);
+    connect(m_loginManager, &LoginManager::networkError, this, &LoginAndRegisterDialog::onNetworkError);
 }
 
 LoginAndRegisterDialog::~LoginAndRegisterDialog()
 {
     delete ui;
+    disconnect(m_loginManager, nullptr, this, nullptr);
 }
 
 void LoginAndRegisterDialog::paintEvent(QPaintEvent *event)
@@ -111,64 +116,98 @@ bool LoginAndRegisterDialog::eventFilter(QObject *watched, QEvent *event)
     return QDialog::eventFilter(watched, event);
 }
 
-
 void LoginAndRegisterDialog::on_closeToolButton_clicked()
 {
     close();
 }
 
-
-void LoginAndRegisterDialog::on_SMSLoginButton_clicked()
+void LoginAndRegisterDialog::on_switchSMSLoginBnt_clicked()
 {
-    ui->SMSLoginButton->setStyleSheet(
+    ui->switchSMSLoginBnt->setStyleSheet(
         "QPushButton { border: none; background: transparent; color: rgb(7, 207, 100); font: 13pt '微软雅黑'; }");
-    ui->passwordLoginButton->setStyleSheet(
+    ui->switchPasswordLoginBnt->setStyleSheet(
         "QPushButton { border: none; background: transparent; color: rgb(10, 10, 10); font: 13pt '微软雅黑'; }");
     ui->inputStackedWidget->setCurrentIndex(1);
 }
 
-
-void LoginAndRegisterDialog::on_passwordLoginButton_clicked()
+void LoginAndRegisterDialog::on_switchPasswordLoginBnt_clicked()
 {
-    ui->passwordLoginButton->setStyleSheet(
+    ui->switchPasswordLoginBnt->setStyleSheet(
         "QPushButton { border: none; background: transparent; color: rgb(7, 207, 100); font: 13pt '微软雅黑'; }");
-    ui->SMSLoginButton->setStyleSheet(
+    ui->switchSMSLoginBnt->setStyleSheet(
         "QPushButton { border: none; background: transparent; color: rgb(10, 10, 10); font: 13pt '微软雅黑'; }");
     ui->inputStackedWidget->setCurrentIndex(0);
 }
 
-void LoginAndRegisterDialog::on_registerButton_clicked()
-{
-    on_SMSLoginButton_clicked();
-}
-
-
-void LoginAndRegisterDialog::on_wechatNumButton_clicked()
+void LoginAndRegisterDialog::on_switchWechatNumBnt_clicked()
 {
     ui->inputStackedWidget->setCurrentIndex(2);
 }
 
 
-void LoginAndRegisterDialog::on_registerButton_2_clicked()
+
+void LoginAndRegisterDialog::on_phoneRegisterBnt_clicked()
 {
-    on_SMSLoginButton_clicked();
+    QString account = ui->phoneLineEdit->text();
+    QString password = ui->phPasswordLineEdit->text();
+}
+
+void LoginAndRegisterDialog::on_phoneLoginBnt_clicked()
+{
+    QString account = ui->phoneLineEdit->text();
+    QString password = ui->phPasswordLineEdit->text();
+    login(account, password);
+}
+
+void LoginAndRegisterDialog::on_actRegisterBnt_clicked()
+{
+    QString account = ui->accountLineEdit->text();
+    QString password = ui->actPasswordLineEdit->text();
+}
+
+void LoginAndRegisterDialog::on_actLoginBnt_clicked()
+{
+    QString account = ui->accountLineEdit->text();
+    QString password = ui->actPasswordLineEdit->text();
+    login(account, password);
 }
 
 
 void LoginAndRegisterDialog::on_LoginOrRegister_clicked()
 {
-    accept();
 }
 
 
-void LoginAndRegisterDialog::on_loginButton1_clicked()
+void LoginAndRegisterDialog::login(const QString& account, const QString &password)
 {
-    accept();
+    if (account.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入账号和密码");
+        return;
+    }
+
+    m_loginManager->login(account, password);
 }
 
-
-void LoginAndRegisterDialog::on_loginButton2_clicked()
+void LoginAndRegisterDialog::onLoginSuccess()
 {
+    QMessageBox::information(this, "成功", "登录成功");
     accept();
 }
+
+void LoginAndRegisterDialog::onLoginFailed(const QString &reason)
+{
+    qDebug()<< reason;
+    QMessageBox::critical(this, "登录失败", "登录失败");
+}
+
+void LoginAndRegisterDialog::onNetworkError(const QString &error)
+{
+    qDebug()<< error;
+    QMessageBox::critical(this, "网络错误", "登录失败");
+}
+
+
+
+
+
 

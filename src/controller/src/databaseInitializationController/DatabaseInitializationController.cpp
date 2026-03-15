@@ -25,37 +25,16 @@ void DatabaseInitializationController::initialize()
     m_initializationInProgress = true;
     m_currentProgress = 0;
 
-    // 延迟初始化，确保所有连接都已建立
-    performInitialization();
-}
-
-void DatabaseInitializationController::performInitialization()
-{
     updateProgress(0, "开始初始化...");
-
-    // 初始化数据库
-    initializeDatabase();
-}
-
-void DatabaseInitializationController::initializeDatabase()
-{
-    updateProgress(10, "初始化数据库...");
-
     bool success = databaseInitializer->ensureInitialized();
-
-    onDatabaseInitializationFinished(success, "Database initialization failed immediately");
-}
-
-void DatabaseInitializationController::onDatabaseInitializationFinished(bool success, const QString& errorMessage)
-{
     if (!success) {
         m_initializationInProgress = false;
-        emit initializationFinished(false, errorMessage);
+        emit initializationFinished(false, "Database initialization failed immediately");
         return;
     }
-
     updateProgress(30, "数据库初始化完成，开始加载网络数据...");
     loadNetworkData();
+
 }
 
 void DatabaseInitializationController::loadNetworkData()

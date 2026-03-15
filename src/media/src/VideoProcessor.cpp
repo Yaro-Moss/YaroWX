@@ -1,4 +1,5 @@
 #include "VideoProcessor.h"
+#include "ConfigManager.h"
 #include "VideoProcessingTask.h"
 #include <QDebug>
 #include <QDir>
@@ -8,8 +9,8 @@ VideoProcessor::VideoProcessor(QObject *parent)
     : QObject(parent)
     , m_thumbnailSize(320, 240)  // 默认缩略图大小
 {
-    QString basePath = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    QDir baseDir(basePath);
+    ConfigManager* configManager = ConfigManager::instance();
+    QDir baseDir(configManager->dataSavePath());
 
     // 设置原视频和缩略图保存路径
     m_videoSavePath = baseDir.absoluteFilePath("videos");

@@ -45,9 +45,9 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     )
 else()
     if(ANDROID)
-        add_library(weChat SHARED ${PROJECT_SOURCES})
+        add_library(YaroWX SHARED ${PROJECT_SOURCES})
     else()
-        add_executable(weChat ${PROJECT_SOURCES})
+        add_executable(YaroWX ${PROJECT_SOURCES})
     endif()
 endif()
 
@@ -61,13 +61,15 @@ target_include_directories(YaroWX PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include/chatConversation
     ${CMAKE_CURRENT_SOURCE_DIR}/include/Delegate
     ${CMAKE_CURRENT_SOURCE_DIR}/include/moment
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/customControls
 )
 
 # 链接Qt库
 target_link_libraries(YaroWX PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Multimedia
-    Qt6::MultimediaWidgets
+    Qt${QT_VERSION_MAJOR}::MultimediaWidgets
+    Qt${QT_VERSION_MAJOR}::WebSockets
 )
 
 # 链接其他模块的库（根据你的实际库名调整）
@@ -76,6 +78,7 @@ target_link_libraries(YaroWX PRIVATE
     controller
     media
     test
+    network
 )
 
 # 平台特定设置

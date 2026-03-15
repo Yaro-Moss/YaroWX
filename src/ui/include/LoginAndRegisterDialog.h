@@ -7,8 +7,7 @@
 
 
 namespace Ui { class LoginAndRegisterDialog; }
-class LoginAndRegisterController;
-
+class LoginManager;
 
 class LoginAndRegisterDialog : public QDialog
 {
@@ -16,7 +15,7 @@ class LoginAndRegisterDialog : public QDialog
 
     
 public:
-    explicit LoginAndRegisterDialog(LoginAndRegisterController *loginAndRegisterController, QWidget *parent = nullptr);
+    explicit LoginAndRegisterDialog(LoginManager *loginManager, QWidget *parent = nullptr);
     ~LoginAndRegisterDialog() override;
 
 
@@ -30,25 +29,30 @@ protected:
 
 private slots:
     void on_closeToolButton_clicked();
-    void on_SMSLoginButton_clicked();
-    void on_passwordLoginButton_clicked();
-    void on_registerButton_clicked();
-    void on_wechatNumButton_clicked();
-    void on_registerButton_2_clicked();
 
+    void on_switchSMSLoginBnt_clicked();
+    void on_switchPasswordLoginBnt_clicked();
+    void on_switchWechatNumBnt_clicked();
 
     void on_LoginOrRegister_clicked();
 
-    void on_loginButton1_clicked();
+    void on_actLoginBnt_clicked();
+    void on_actRegisterBnt_clicked();
 
-    void on_loginButton2_clicked();
+    void on_phoneRegisterBnt_clicked();
+    void on_phoneLoginBnt_clicked();
 
 private:
     Ui::LoginAndRegisterDialog *ui;
     QPixmap background;
     bool m_isDragging;
     QPoint m_dragStartPosition;
+    LoginManager *m_loginManager;
 
+    void login(const QString &account, const QString& password);
+    void onLoginSuccess();
+    void onLoginFailed(const QString &reason);
+    void onNetworkError(const QString &error);
 };
 
 

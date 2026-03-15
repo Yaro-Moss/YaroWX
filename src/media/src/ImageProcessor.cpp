@@ -1,4 +1,5 @@
 #include "ImageProcessor.h"
+#include "ConfigManager.h"
 #include "ImageProcessingTask.h"
 #include <QDebug>
 #include <QDir>
@@ -9,16 +10,16 @@ ImageProcessor::ImageProcessor(QObject *parent)
     : QObject(parent)
     , m_thumbnailSize(200, 300)
 {
-    QString basePath = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    QDir baseDir(basePath);
+    ConfigManager* configManager = ConfigManager::instance();
+    QDir baseDir(configManager->dataSavePath());
 
     // 设置原图和缩略图保存路径
     m_imageSavePath = baseDir.absoluteFilePath("images");
-    m_thumbnailSavePath = baseDir.absoluteFilePath("thumbnails");
+    m_thumbnailSavePath = baseDir.absoluteFilePath("image_thumbnails");
 
     // 确保目录存在
     baseDir.mkpath("images");
-    baseDir.mkpath("thumbnails");
+    baseDir.mkpath("image_thumbnails");
 
     // 默认最大线程数设置为CPU核心数，避免过多并发
     int idealThreadCount = QThread::idealThreadCount();

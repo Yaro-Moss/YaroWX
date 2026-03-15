@@ -324,7 +324,7 @@ border-left: 1px solid rgb(224, 224, 224);
                 </spacer>
                </item>
                <item>
-                <widget class="QPushButton" name="passwordLoginButton">
+                <widget class="QPushButton" name="switchPasswordLoginBnt">
                  <property name="styleSheet">
                   <string notr="true"> QPushButton {
         border: none;             
@@ -354,7 +354,7 @@ border-left: 1px solid rgb(220, 220, 220); </string>
                 </widget>
                </item>
                <item>
-                <widget class="QPushButton" name="SMSLoginButton">
+                <widget class="QPushButton" name="switchSMSLoginBnt">
                  <property name="styleSheet">
                   <string notr="true"> QPushButton {
         border: none;             
@@ -387,7 +387,7 @@ border-left: 1px solid rgb(220, 220, 220); </string>
             <item>
              <widget class="QStackedWidget" name="inputStackedWidget">
               <property name="currentIndex">
-               <number>2</number>
+               <number>0</number>
               </property>
               <widget class="QWidget" name="page_0">
                <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -476,7 +476,7 @@ border-bottom:1px solid rgb(220,220,220);
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLineEdit" name="lineEdit">
+                       <widget class="QLineEdit" name="phoneLineEdit">
                         <property name="minimumSize">
                          <size>
                           <width>0</width>
@@ -526,7 +526,7 @@ border-bottom:1px solid rgb(220,220,220);
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLineEdit" name="lineEdit_3">
+                       <widget class="QLineEdit" name="phPasswordLineEdit">
                         <property name="minimumSize">
                          <size>
                           <width>0</width>
@@ -556,7 +556,7 @@ border-bottom:1px solid rgb(220,220,220);
                    <number>7</number>
                   </property>
                   <item>
-                   <widget class="QPushButton" name="registerButton">
+                   <widget class="QPushButton" name="phoneRegisterBnt">
                     <property name="minimumSize">
                      <size>
                       <width>170</width>
@@ -591,7 +591,7 @@ QPushButton:pressed{
                    </widget>
                   </item>
                   <item>
-                   <widget class="QPushButton" name="loginButton2">
+                   <widget class="QPushButton" name="phoneLoginBnt">
                     <property name="minimumSize">
                      <size>
                       <width>170</width>
@@ -974,7 +974,7 @@ border-bottom:1px solid rgb(220,220,220);
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLineEdit" name="lineEdit_2">
+                       <widget class="QLineEdit" name="accountLineEdit">
                         <property name="minimumSize">
                          <size>
                           <width>0</width>
@@ -1024,7 +1024,7 @@ border-bottom:1px solid rgb(220,220,220);
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLineEdit" name="lineEdit_4">
+                       <widget class="QLineEdit" name="actPasswordLineEdit">
                         <property name="minimumSize">
                          <size>
                           <width>0</width>
@@ -1054,7 +1054,7 @@ border-bottom:1px solid rgb(220,220,220);
                    <number>7</number>
                   </property>
                   <item>
-                   <widget class="QPushButton" name="registerButton_2">
+                   <widget class="QPushButton" name="actRegisterBnt">
                     <property name="minimumSize">
                      <size>
                       <width>170</width>
@@ -1089,7 +1089,7 @@ QPushButton:pressed{
                    </widget>
                   </item>
                   <item>
-                   <widget class="QPushButton" name="loginButton1">
+                   <widget class="QPushButton" name="actLoginBnt">
                     <property name="minimumSize">
                      <size>
                       <width>170</width>
@@ -1170,7 +1170,7 @@ color: rgb(143, 143, 143);</string>
                    </spacer>
                   </item>
                   <item>
-                   <widget class="QToolButton" name="wechatNumButton">
+                   <widget class="QToolButton" name="switchWechatNumBnt">
                     <property name="styleSheet">
                      <string notr="true"> QToolButton {
         border: none;             

@@ -1,4 +1,5 @@
 #include "DatabaseInitializer.h"
+#include "ConfigManager.h"
 #include "DatabaseSchema.h"
 #include <QStandardPaths>
 #include <QDir>
@@ -54,12 +55,6 @@ bool DatabaseInitializer::ensureInitialized()
         return false;
     }
 
-    QMutexLocker globalLock(&s_initMutex);
-    if (s_initialized.load()) return true;
-
-    // 检查数据库文件是否已存在
-    bool dbFileExisted = databaseFileExists();
-
     // 先清理旧连接（确保查询对象销毁）
     if (QSqlDatabase::contains("main")) {
         QSqlDatabase oldDb = QSqlDatabase::database("main");
@@ -73,15 +68,11 @@ bool DatabaseInitializer::ensureInitialized()
 
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", "main");
     db.setDatabaseName(m_dbPath);
+
     if (!db.open()) {
         qCritical() << "Failed to open main DB:" << db.lastError().text();
-        // 销毁连接
-        QSqlDatabase::removeDatabase("main");
-
-        // 删除新建的损坏文件
-        if (!dbFileExisted) {
-            removeDatabaseFile();
-        }
+        // 关闭连接并删除新建的损坏文件
+        removeDatabaseFile();
         return false;
     }
 
@@ -94,7 +85,6 @@ bool DatabaseInitializer::ensureInitialized()
     // 显式结束查询、关闭连接
     q.finish();
     db.close();
-    // 销毁连接（必须在db对象销毁前调用）
     QSqlDatabase::removeDatabase("main");
 
     if (!ok) {
@@ -110,10 +100,10 @@ bool DatabaseInitializer::ensureInitialized()
 
 QString DatabaseInitializer::databasePath()
 {
-    QString loc = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    QDir dir(loc);
+    ConfigManager* configManager = ConfigManager::instance();
+    QDir dir(configManager->dataSavePath());
     dir.mkpath(".");
-    return dir.absoluteFilePath("wechat_clone.db");
+    return dir.absoluteFilePath("YaroWX.db");
 }
 
 bool DatabaseInitializer::databaseFileExists() const
@@ -249,19 +239,4 @@ bool DatabaseInitializer::removeDatabaseFile()
     }
 
     return removed;
-}
-
-void DatabaseInitializer::resetDatabase()
-{
-    QMutexLocker lock(&s_initMutex);
-    s_initialized.store(false);
-
-    // 关闭所有数据库连接
-    if (QSqlDatabase::contains("main")) {
-        QSqlDatabase::database("main").close();
-        QSqlDatabase::removeDatabase("main");
-    }
-
-    removeDatabaseFile();
-    qDebug() << "Database reset completed";
 }

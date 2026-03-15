@@ -1,4 +1,5 @@
 #include "FileCopyProcessor.h"
+#include "ConfigManager.h"
 #include "FileCopyTask.h"
 #include <QDebug>
 #include <QDir>
@@ -57,8 +58,8 @@ void FileCopyProcessor::cancelAllTasks()
 
 QString FileCopyProcessor::getDefaultSavePath()
 {
-    QString basePath = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
-    QDir baseDir(basePath);
+    ConfigManager* configManager = ConfigManager::instance();
+    QDir baseDir(configManager->dataSavePath());
     QString copyPath = baseDir.absoluteFilePath("file");
 
     // 确保目录存在

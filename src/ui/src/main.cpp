@@ -1,5 +1,6 @@
 #include "AppInitialize.h"
 #include "DatabaseInitializationController.h"
+#include "LoginManager.h"
 #include "WeChatWidget.h"
 #include <QApplication>
 #include "DatabaseManager.h"
@@ -15,7 +16,6 @@
 #include "ThumbnailResourceManager.h"
 #include <QMessageBox>
 #include "LoginAndRegisterDialog.h"
-#include "LoginAndRegisterController.h"
 #include "TestWidget.h"
 
 
@@ -23,6 +23,8 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("AAA");
+    QCoreApplication::setApplicationName("YaroWX");
 
     // 注册元类型
     qRegisterMetaType<Conversation>("Conversation");
@@ -56,8 +58,8 @@ int main(int argc, char *argv[])
     qRegisterMetaType<MomentLikeInfo>("MomentLikeInfo");
     qRegisterMetaType<MomentCommentInfo>("MomentCommentInfo");
 
-    LoginAndRegisterController loginAndRegisterController;
-    LoginAndRegisterDialog loginAndRegisterDialog(&loginAndRegisterController);
+    LoginManager *loginManager = new LoginManager();
+    LoginAndRegisterDialog loginAndRegisterDialog(loginManager);
     if(loginAndRegisterDialog.exec() == QDialog::Accepted){
         qDebug()<<"登录成功-----";
     }else {

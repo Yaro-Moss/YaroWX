@@ -20,10 +20,6 @@ signals:
     void initializationFinished(bool success, const QString& errorMessage = "");
     void databaseReady();
 
-private slots:
-    void performInitialization();
-    void onDatabaseInitializationFinished(bool success, const QString& errorMessage);
-
 private:
     void initializeDatabase();
     void loadNetworkData();

@@ -19,7 +19,6 @@ bool AppInitialize::initialize()
     m_splashDialog = new SplashDialog();
     m_splashDialog->show();
 
-    // 创建数据库初始化控制器
     connect(m_initController, &DatabaseInitializationController::initializationProgress,
             this, &AppInitialize::onDatabaseInitializationProgress);
     connect(m_initController, &DatabaseInitializationController::initializationFinished,

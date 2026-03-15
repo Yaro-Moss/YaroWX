@@ -25,6 +25,7 @@ find_package(QT NAMES Qt6 REQUIRED COMPONENTS
     MultimediaWidgets
     Concurrent
     Network
+    WebSockets
 )
 find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     Widgets
@@ -32,6 +33,7 @@ find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS
     MultimediaWidgets
     Concurrent
     Network
+    WebSockets
 )
 
 # 设置编译定义
