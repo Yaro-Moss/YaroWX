@@ -23,6 +23,8 @@ public:
     // 快速查找（基于哈希表）
     QModelIndex findContactIndex(qint64 userId) const;
     Contact getContactById(qint64 userId) const;
+    Contact getCurrentLoginUser();
+    void removeContact(qint64 userId);
 
 private:
     QStandardItem *m_newFriendItem;

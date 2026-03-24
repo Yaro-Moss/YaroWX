@@ -1,4 +1,5 @@
 #include "VoiceRecordDialog.h"
+#include "ConfigManager.h"
 #include <QProcess>
 #include <QMediaDevices>
 #include <QEventLoop>
@@ -10,8 +11,8 @@ VoiceRecordDialog::VoiceRecordDialog(QWidget *parent)
     , m_isRecording(false)
 {
     // 设置音频保存目录
-    m_audioBaseDir = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation)
-                     + "/VoiceMessages";
+    ConfigManager* configManager = ConfigManager::instance();
+    m_audioBaseDir = configManager->dataSavePath() + "/VoiceMessages";
     m_wavDir = m_audioBaseDir + "/wav";
     m_mp3Dir = m_audioBaseDir + "/mp3";
 

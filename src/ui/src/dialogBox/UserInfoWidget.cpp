@@ -37,20 +37,20 @@ void UserInfoWidget::setSelectedContact(const Contact &contact)
 {
     m_contact = contact;
 
-    QPixmap avatar (m_contact.user.avatarLocalPath);
+    QPixmap avatar (m_contact.user.avatar_local_pathValue());
     if(avatar.isNull())
-        avatar = AvatarButton::generateDefaultAvatar(QSize(500, 500), m_contact.user.nickname);
+        avatar = AvatarButton::generateDefaultAvatar(QSize(500, 500), m_contact.user.nicknameValue());
     avatarLabel->setPixmap(avatar);
 
-    remarkNameLable->setText(m_contact.remarkName);
-    nicknameLable->setText(m_contact.user.nickname);
-    accountLable->setText(m_contact.user.account);
-    regionLable->setText(m_contact.user.region);
-    remarkNameButton->setText(m_contact.remarkName);
+    remarkNameLable->setText(m_contact.remark_nameValue());
+    nicknameLable->setText(m_contact.user.nicknameValue());
+    accountLable->setText(m_contact.user.accountValue());
+    regionLable->setText(m_contact.user.regionValue());
+    remarkNameButton->setText(m_contact.remark_nameValue());
     tagButton->setText(m_contact.getTagsString());
-    signatureLabel->setText(m_contact.user.signature);
+    signatureLabel->setText(m_contact.user.signatureValue());
     mutualgroupLable->setText("9");// 忘记实现了，随便写个数字，有空再搞。
-    sourceLabel->setText(m_contact.source);
+    sourceLabel->setText(m_contact.sourceValue());
 }
 
 void UserInfoWidget::on_switchMessageInterfaceToolButton_clicked()

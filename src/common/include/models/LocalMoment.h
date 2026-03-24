@@ -1,6 +1,5 @@
-#ifndef LOCALMOMENT_H
-#define LOCALMOMENT_H
-
+#pragma once
+#include "ORM_Macros.h"
 #include <QObject>
 #include <QString>
 #include <QVector>
@@ -8,6 +7,46 @@
 #include <QJsonArray>
 #include <QDateTime>
 #include <QJsonDocument>
+
+class LocalMomentDb {
+    Q_GADGET
+    ORM_MODEL(LocalMomentDb, "local_moment")
+
+    ORM_FIELD(qint64, moment_id)           // INTEGER PRIMARY KEY
+    ORM_FIELD(qint64, user_id)             // INTEGER NOT NULL
+    ORM_FIELD(QString, username)           // TEXT NOT NULL
+    ORM_FIELD(QString, avatar_local_path)  // TEXT
+    ORM_FIELD(QString, avatar_url)         // TEXT
+    ORM_FIELD(QString, content)            // TEXT DEFAULT ''
+    ORM_FIELD(QString, video_local_path)   // TEXT DEFAULT ''
+    ORM_FIELD(QString, video_url)          // TEXT DEFAULT ''
+    ORM_FIELD(int, video_download_status)  // INTEGER DEFAULT 0
+    ORM_FIELD(QString, images_info)        // TEXT DEFAULT '[]'
+    ORM_FIELD(int, privacy_type)           // INTEGER DEFAULT 0
+    ORM_FIELD(int, is_deleted)             // INTEGER DEFAULT 0
+    ORM_FIELD(int, sync_status)            // INTEGER DEFAULT 0
+    ORM_FIELD(qint64, expire_time)         // INTEGER
+    ORM_FIELD(qint64, create_time)         // INTEGER
+    ORM_FIELD(qint64, local_update_time)   // INTEGER DEFAULT (strftime('%s', 'now'))
+
+public:
+    LocalMomentDb() = default;
+};
+
+class LocalMomentInteractDb {
+    Q_GADGET
+    ORM_MODEL(LocalMomentInteractDb, "local_moment_interact")
+
+    ORM_FIELD(qint64, interact_id)          // INTEGER PRIMARY KEY AUTOINCREMENT
+    ORM_FIELD(qint64, moment_id)            // INTEGER NOT NULL UNIQUE
+    ORM_FIELD(QString, likes)               // TEXT DEFAULT '[]'
+    ORM_FIELD(QString, comments)            // TEXT DEFAULT '[]'
+    ORM_FIELD(qint64, local_update_time)    // INTEGER DEFAULT (strftime('%s', 'now'))
+
+public:
+    LocalMomentInteractDb() = default;
+};
+
 
 // 图片信息结构体（对应数据库中images_info的JSON项）
 struct MomentImageInfo {
@@ -61,14 +100,14 @@ struct MomentLikeInfo {
 
 // 评论信息结构体
 struct MomentCommentInfo {
-    qint64 commentId = 0;     // 评论ID
-    qint64 userId = 0;        // 评论用户ID
+    qint64 commentId = -1;     // 评论ID
+    qint64 userId = -1;        // 评论用户ID
     QString username;         // 评论用户昵称
     QString content;          // 文字内容
     MomentImageInfo image;    // 评论图片
-    qint64 replyUserId = 0;   // 回复目标用户ID
+    qint64 replyUserId = -1;   // 回复目标用户ID
     QString replyUsername;    // 回复目标用户名
-    qint64 createTime = 0;    // 评论时间戳
+    qint64 createTime = -1;    // 评论时间戳
     bool isDeleted = false;   // 是否删除
     QString avatarLocalPath;  // 点赞用户头像本地路径
 
@@ -113,50 +152,63 @@ struct MomentCommentInfo {
 
 // 朋友圈互动信息（点赞+评论）
 struct LocalMomentInteract {
-    qint64 momentId = 0;                  // 朋友圈ID
-    QVector<MomentLikeInfo> likes;        // 点赞列表
-    QVector<MomentCommentInfo> comments;  // 评论列表
-    qint64 localUpdateTime = 0;           // 本地更新时间
+    qint64 interactId = -1;
+    qint64 momentId = -1;
+    QVector<MomentLikeInfo> likes;
+    QVector<MomentCommentInfo> comments;
+    qint64 localUpdateTime = -1;
 
-    bool isValid() const { return momentId != 0; }
+    bool isValid() const { return !(momentId<0); }
 
-    QJsonObject toJson() const {
-        QJsonObject obj;
-        QJsonArray likeArray, commentArray;
-        
-        for (const auto& like : likes) likeArray.append(like.toJson());
-        for (const auto& comment : comments) commentArray.append(comment.toJson());
-        
-        obj["likes"] = likeArray;
-        obj["comments"] = commentArray;
-        return obj;
+    // 将 likes 列表转换为 JSON 数组字符串
+    QString likesToJson() const {
+        QJsonArray array;
+        for (const auto& like : likes) {
+            array.append(like.toJson());
+        }
+        return QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact));
     }
 
-    static LocalMomentInteract fromJson(qint64 momentId, const QString& jsonStr) {
+    // 将 comments 列表转换为 JSON 数组字符串
+    QString commentsToJson() const {
+        QJsonArray array;
+        for (const auto& comment : comments) {
+            array.append(comment.toJson());
+        }
+        return QString::fromUtf8(QJsonDocument(array).toJson(QJsonDocument::Compact));
+    }
+
+    // 从两个独立的 JSON 字符串恢复互动数据（分别对应 likes 和 comments 字段）
+    static LocalMomentInteract fromDb(const LocalMomentInteractDb& db)
+    {
         LocalMomentInteract interact;
-        interact.momentId = momentId;
-        
-        QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8());
-        if (!doc.isObject()) return interact;
-        
-        QJsonObject obj = doc.object();
-        QJsonArray likeArray = obj["likes"].toArray();
-        QJsonArray commentArray = obj["comments"].toArray();
-        
-        for (const auto& likeObj : likeArray) {
-            interact.likes.append(MomentLikeInfo::fromJson(likeObj.toObject()));
+        interact.interactId = db.interact_idValue();
+        interact.momentId = db.moment_idValue();
+
+        // 解析点赞列表
+        QJsonDocument doc = QJsonDocument::fromJson(db.likesValue().toUtf8());
+        if (doc.isArray()) {
+            for (const auto& val : doc.array()) {
+                interact.likes.append(MomentLikeInfo::fromJson(val.toObject()));
+            }
         }
-        for (const auto& commentObj : commentArray) {
-            interact.comments.append(MomentCommentInfo::fromJson(commentObj.toObject()));
+
+        // 解析评论列表
+        doc = QJsonDocument::fromJson(db.commentsValue().toUtf8());
+        if (doc.isArray()) {
+            for (const auto& val : doc.array()) {
+                interact.comments.append(MomentCommentInfo::fromJson(val.toObject()));
+            }
         }
+
         return interact;
     }
 };
 
 // 朋友圈主模型
 struct LocalMoment {
-    qint64 momentId = 0;           // 服务端唯一ID
-    qint64 userId = 0;             // 发布者ID
+    qint64 momentId = -1;           // 服务端唯一ID
+    qint64 userId = -1;             // 发布者ID
     QString username;              // 发布者昵称
     QString avatarLocalPath;       // 发布者头像本地路径
     QString avatarUrl;             // 发布者头像网络URL
@@ -182,7 +234,7 @@ struct LocalMoment {
 
     LocalMomentInteract interact;   // 该动态的互动信息
 
-    bool isValid() const { return momentId != 0; }
+    bool isValid() const { return !(momentId < 0); }
     bool hasVideo() const { return !videoUrl.isEmpty(); }
     bool hasImages() const { return !images.isEmpty(); }
     bool isPureText() const { return !content.isEmpty() && !hasVideo() && !hasImages(); }
@@ -199,12 +251,11 @@ struct LocalMoment {
         images.clear();
         QJsonDocument doc = QJsonDocument::fromJson(jsonStr.toUtf8());
         if (!doc.isArray()) return;
-        
+
         QJsonArray array = doc.array();
-        for (const auto& imgObj : array) {
+        for (const auto& imgObj : std::as_const(array)) {
             images.append(MomentImageInfo::fromJson(imgObj.toObject()));
         }
     }
 };
 
-#endif // LOCALMOMENT_H

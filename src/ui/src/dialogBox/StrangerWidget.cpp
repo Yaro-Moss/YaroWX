@@ -26,6 +26,6 @@ void StrangerWidget::updateUser(const User& user){
     QString avatar = QStringList({":/a/image/.jpg", ":/a/image/avatar.jpg", ":/a/image/fm.jpg", ":/a/image/二维码.png"}).at(QRandomGenerator::global()->bounded(4));
 
     ui->avatarLabel->setPixmap(QPixmap(avatar));
-    ui->nickname->setText(user.nickname);
-    ui->region->setText(user.region);
+    ui->nickname->setText(user.nicknameValue());
+    ui->region->setText(user.regionValue());
 }

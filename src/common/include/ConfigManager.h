@@ -12,7 +12,7 @@ class ConfigManager : public QObject
 
 private:
     QSettings* m_settings;
-    QString currentUserID = "";
+    QString currentLoginUserID = "";
 
     explicit ConfigManager(QObject *parent = nullptr);
 
@@ -27,6 +27,10 @@ public:
     // 配置读取接口
     QString webSocketUrl() const;
     QString loginUrl() const;
+    QString registerUrl() const;
+    QString getAllFriendUrl() const;
+    QString getProfileUrl()const;
+    QString getGroupsAddMembersUrl()const;
     int maxRetry() const;
     QString dataSavePath() const;
 
@@ -34,7 +38,7 @@ public:
     void saveConfig();
 
     ~ConfigManager() override;
-    void setCurrentUserID(QString id){currentUserID = id;}
+    void setCurrentLoginUserID(QString id){currentLoginUserID = id;}
 
 };
 

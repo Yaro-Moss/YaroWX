@@ -48,7 +48,7 @@ public:
     ~WeChatWidget();
 
 public slots:
-    void on_switchtoMessageInterface(Contact contact);
+    void on_switchtoMessageInterface(const Contact &contact);
 
 
 protected:
@@ -142,7 +142,7 @@ private:
     ChatMessageListView *chatMessageListView;
 
     Conversation currentConversation;
-    Contact currentUser;
+    Contact m_currentLoginUser;
     Contact m_contact;
 
     // 通讯录TreeView

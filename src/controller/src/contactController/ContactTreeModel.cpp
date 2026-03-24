@@ -49,7 +49,7 @@ void ContactTreeModel::loadContacts(const QList<Contact>& contacts)
         contactItem->setData(QVariant::fromValue(contact), Qt::UserRole);
 
         // 插入哈希表
-        m_contactItems.insert(contact.userId, contactItem);
+        m_contactItems.insert(contact.user_idValue(), contactItem);
 
         m_contactGroupItem->appendRow(contactItem);
     }
@@ -60,9 +60,9 @@ void ContactTreeModel::addContact(const Contact& contact)
     if (!m_contactGroupItem) return;
 
     // 检查是否已存在相同 userId 的联系人
-    if (m_contactItems.contains(contact.userId)) {
+    if (m_contactItems.contains(contact.user_idValue())) {
         // 已存在 更新现有 item 的数据（保持指针不变，哈希表无需改动）
-        QStandardItem *existingItem = m_contactItems.value(contact.userId);
+        QStandardItem *existingItem = m_contactItems.value(contact.user_idValue());
         existingItem->setData(QVariant::fromValue(contact), Qt::UserRole);
         return;
     }
@@ -73,7 +73,7 @@ void ContactTreeModel::addContact(const Contact& contact)
     contactItem->setData(QVariant::fromValue(contact), Qt::UserRole);
 
     // 插入哈希表
-    m_contactItems.insert(contact.userId, contactItem);
+    m_contactItems.insert(contact.user_idValue(), contactItem);
 
     m_contactGroupItem->appendRow(contactItem);
 }
@@ -120,6 +120,38 @@ Contact ContactTreeModel::getContactById(qint64 userId) const
     }
     // 返回一个表示无效的联系人
     Contact emptyContact;
-    emptyContact.userId = -1;
+    return emptyContact;
+}
+
+void ContactTreeModel::removeContact(qint64 userId)
+{
+    QStandardItem *item = m_contactItems.value(userId, nullptr);
+    if (item && m_contactGroupItem) {
+        m_contactGroupItem->removeRow(item->row());
+        m_contactItems.remove(userId);
+    }
+}
+
+Contact ContactTreeModel::getCurrentLoginUser()
+{
+    // 遍历哈希表中的所有联系人项
+    for (auto it = m_contactItems.constBegin(); it != m_contactItems.constEnd(); ++it) {
+        QStandardItem *item = it.value();
+        if (!item) {
+            continue;
+        }
+
+        // 获取联系人数据
+        QVariant contactVar = item->data(Qt::UserRole);
+        if (contactVar.isValid() && contactVar.canConvert<Contact>()) {
+            Contact contact = contactVar.value<Contact>();
+            if (contact.user.isValid() && contact.user.is_current() == 1) {
+                return contact;
+            }
+        }
+    }
+
+    // 未找到当前登录用户对应的联系人，返回空联系人
+    Contact emptyContact;
     return emptyContact;
 }

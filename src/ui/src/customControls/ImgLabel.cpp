@@ -49,6 +49,7 @@ void ImgLabel::mouseReleaseEvent(QMouseEvent *event)
                 m_mediaDialog->playSinglePixmap(m_pixmap);
             }
             m_mediaDialog->close();
+            m_mediaDialog->showNormal();
             m_mediaDialog->show();
 
             // 强制触发窗口刷新（临时改变大小再恢复）

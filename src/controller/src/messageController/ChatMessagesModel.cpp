@@ -7,12 +7,6 @@ ChatMessagesModel::ChatMessagesModel(QObject *parent)
 {
 }
 
-ChatMessagesModel::ChatMessagesModel(int currentUserId, QObject *parent)
-    : QAbstractListModel(parent)
-    , m_currentUserId(currentUserId)
-{
-}
-
 int ChatMessagesModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())
@@ -30,33 +24,33 @@ QVariant ChatMessagesModel::data(const QModelIndex &index, int role) const
 
     switch (role) {
     case MessageIdRole:
-        return message.messageId;
+        return message.message_id();
     case ConversationIdRole:
-        return message.conversationId;
+        return message.conversation_id();
     case SenderIdRole:
-        return message.senderId;
+        return message.sender_id();
     case TypeRole:
-        return static_cast<int>(message.type);
+        return static_cast<int>(message.typeValue());
     case ContentRole:
-        return message.content;
+        return message.content();
     case FilePathRole:
-        return message.filePath;
+        return message.file_path();
     case FileUrlRole:
-        return message.fileUrl;
+        return message.file_url();
     case FileSizeRole:
-        return message.fileSize;
+        return message.file_size();
     case DurationRole:
-        return message.duration;
+        return message.duration();
     case ThumbnailPathRole:
-        return message.thumbnailPath;
+        return message.thumbnail_path();
     case TimestampRole:
-        return message.timestamp;
+        return message.msg_time();
     case SenderNameRole:
-        return message.senderName;
+        return message.senderName();
     case AvatarRole:
-        return message.avatar;
+        return message.avatar();
     case IsOwnRole:
-        return message.isOwn(m_currentUserId);
+        return message.isOwn(m_currentLoginUser.user_idValue());
     case IsTextRole:
         return message.isText();
     case IsImageRole:
@@ -82,26 +76,26 @@ QVariant ChatMessagesModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole: {
         // 显示用文本预览
         QString preview;
-        switch (message.type) {
+        switch (static_cast<MessageType>(message.typeValue())) {
         case MessageType::TEXT:
-            preview = message.content;
+            preview = message.contentValue();
             break;
         case MessageType::IMAGE:
-            preview = "[图片] " + message.content;
+            preview = "[图片] " + message.contentValue();
             break;
         case MessageType::VIDEO:
-            preview = "[视频] " + message.content;
+            preview = "[视频] " + message.contentValue();
             break;
         case MessageType::FILE:
-            preview = "[文件] " + message.content + " (" + message.formattedFileSize() + ")";
+            preview = "[文件] " + message.contentValue() + " (" + message.formattedFileSize() + ")";
             break;
         case MessageType::VOICE:
             preview = "[语音] " + message.formattedDuration();
             break;
         }
         return QString("[%1] %2: %3").arg(
-            FormatTime(message.timestamp),
-            message.senderName,
+            FormatTime(message.msg_timeValue()),
+            message.senderName(),
             preview.left(50)
             );
     }
@@ -120,28 +114,28 @@ bool ChatMessagesModel::setData(const QModelIndex &index, const QVariant &value,
 
     switch (role) {
     case ContentRole:
-        message.content = value.toString();
+        message.setcontent(value.toString());
         break;
     case SenderNameRole:
-        message.senderName = value.toString();
+        message.setSenderName(value.toString());
         break;
     case AvatarRole:
-        message.avatar = value.toString();
+        message.setAvatar(value.toString());
         break;
     case FilePathRole:
-        message.filePath = value.toString();
+        message.setfile_path(value.toString());
         break;
     case FileUrlRole:
-        message.fileUrl = value.toString();
+        message.setfile_url(value.toString());
         break;
     case FileSizeRole:
-        message.fileSize = value.toLongLong();
+        message.setfile_size(value.toLongLong());
         break;
     case DurationRole:
-        message.duration = value.toInt();
+        message.setduration(value.toInt());
         break;
     case ThumbnailPathRole:
-        message.thumbnailPath = value.toString();
+        message.setthumbnail_path(value.toString());
         break;
     default:
         return false;
@@ -184,54 +178,19 @@ QHash<int, QByteArray> ChatMessagesModel::roleNames() const
 
 void ChatMessagesModel::addMessage(const Message &message)
 {
-    qint64 id = message.messageId;
+    qint64 id = message.message_idValue();
     if (m_messages.contains(id)) {
-        // 已存在：更新数据，位置不变
-        m_messages[id] = message;
-        int row = m_messageIds.indexOf(id);
-        if (row != -1) {
-            QModelIndex idx = createIndex(row, 0);
-            emit dataChanged(idx, idx);
-        }
+        // 如果已存在，按更新处理（可能需要移动位置）
+        updateMessage(message);
         return;
     }
 
-    // 新消息：追加到末尾（假设外部保证顺序）
-    beginInsertRows(QModelIndex(), m_messageIds.size(), m_messageIds.size());
+    // 计算新消息应该插入的位置
+    int newRow = findInsertPosition(message);
+
+    beginInsertRows(QModelIndex(), newRow, newRow);
     m_messages.insert(id, message);
-    m_messageIds.append(id);
-    endInsertRows();
-}
-
-void ChatMessagesModel::insertMessage(int row, const Message &message)
-{
-    if (row < 0 || row > m_messageIds.size())
-        return;
-
-    qint64 id = message.messageId;
-    if (m_messages.contains(id)) {
-        // 已存在：可能需要移动位置
-        int oldRow = m_messageIds.indexOf(id);
-        if (oldRow == row) {
-            // 位置相同，只更新数据
-            m_messages[id] = message;
-            QModelIndex idx = createIndex(row, 0);
-            emit dataChanged(idx, idx);
-        } else {
-            // 位置不同：先更新数据，再移动行
-            m_messages[id] = message;
-            if (beginMoveRows(QModelIndex(), oldRow, oldRow, QModelIndex(), row > oldRow ? row + 1 : row)) {
-                m_messageIds.move(oldRow, row);
-                endMoveRows();
-            }
-        }
-        return;
-    }
-
-    // 新消息：插入指定位置
-    beginInsertRows(QModelIndex(), row, row);
-    m_messages.insert(id, message);
-    m_messageIds.insert(row, id);
+    m_messageIds.insert(newRow, id);
     endInsertRows();
 }
 
@@ -256,15 +215,27 @@ void ChatMessagesModel::removeMessageById(qint64 messageId)
 
 void ChatMessagesModel::updateMessage(const Message &message)
 {
-    qint64 id = message.messageId;
+    qint64 id = message.message_idValue();
     if (!m_messages.contains(id))
         return;
 
+    // 先更新数据
     m_messages[id] = message;
-    int row = m_messageIds.indexOf(id);
-    if (row != -1) {
-        QModelIndex idx = createIndex(row, 0);
+
+    // 计算新位置
+    int oldRow = m_messageIds.indexOf(id);
+    int newRow = findInsertPosition(message);
+
+    if (newRow == oldRow) {
+        // 位置不变，仅通知数据变化
+        QModelIndex idx = createIndex(oldRow, 0);
         emit dataChanged(idx, idx);
+    } else {
+        // 位置改变，移动行
+        if (beginMoveRows(QModelIndex(), oldRow, oldRow, QModelIndex(), newRow > oldRow ? newRow + 1 : newRow)) {
+            m_messageIds.move(oldRow, newRow);
+            endMoveRows();
+        }
     }
 }
 
@@ -280,35 +251,6 @@ Message ChatMessagesModel::getMessage(int row) const
 Message ChatMessagesModel::getMessageById(qint64 messageId) const
 {
     return m_messages.value(messageId);
-}
-
-void ChatMessagesModel::addMessages(const QVector<Message> &messages)
-{
-    if (messages.isEmpty())
-        return;
-
-    // 批量添加：过滤出确实不存在的消息，然后一次性插入末尾
-    QVector<Message> newMessages;
-    for (const Message &msg : messages) {
-        if (!m_messages.contains(msg.messageId)) {
-            newMessages.append(msg);
-        } else {
-            // 已存在的消息单独更新（位置不变）
-            updateMessage(msg);
-        }
-    }
-
-    if (newMessages.isEmpty())
-        return;
-
-    int firstRow = m_messageIds.size();
-    int lastRow = firstRow + newMessages.size() - 1;
-    beginInsertRows(QModelIndex(), firstRow, lastRow);
-    for (const Message &msg : newMessages) {
-        m_messages.insert(msg.messageId, msg);
-        m_messageIds.append(msg.messageId);
-    }
-    endInsertRows();
 }
 
 void ChatMessagesModel::clearAll()
@@ -343,22 +285,16 @@ QVector<Message> ChatMessagesModel::getRecentMessages(int count) const
     return result;
 }
 
-void ChatMessagesModel::setCurrentUserId(qint64 userId)
+void ChatMessagesModel::setCurrentLoginUser(const Contact &user)
 {
-    if (m_currentUserId != userId) {
-        m_currentUserId = userId;
-        if (!m_messageIds.isEmpty()) {
-            // 刷新所有消息的 isOwn 状态
-            emit dataChanged(createIndex(0, 0), createIndex(m_messageIds.size() - 1, 0), {IsOwnRole});
-        }
-        emit currentUserIdChanged();
+    m_currentLoginUser = user;
+    if (!m_messageIds.isEmpty()) {
+        // 刷新所有消息的 isOwn 状态
+        emit dataChanged(createIndex(0, 0), createIndex(m_messageIds.size() - 1, 0), {IsOwnRole});
     }
+    emit currentUserIdChanged();
 }
 
-qint64 ChatMessagesModel::currentUserId() const
-{
-    return m_currentUserId;
-}
 
 void ChatMessagesModel::setConversationId(qint64 conversationId)
 {
@@ -371,4 +307,19 @@ void ChatMessagesModel::setConversationId(qint64 conversationId)
 qint64 ChatMessagesModel::conversationId() const
 {
     return m_currentConversationId;
+}
+
+int ChatMessagesModel::findInsertPosition(const Message &message) const
+{
+    // 遍历现有消息，找到第一个时间大于等于新消息的位置
+    for (int i = 0; i < m_messageIds.size(); ++i) {
+        qint64 id = m_messageIds.at(i);
+        const Message &existing = m_messages.value(id);
+        // 如果现有消息的时间 >= 新消息时间，则新消息应插入在此位置之前
+        if (!lessThan(existing, message)) {
+            return i;
+        }
+    }
+    // 所有消息时间都小于新消息，则插入末尾
+    return m_messageIds.size();
 }

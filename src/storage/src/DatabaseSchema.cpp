@@ -234,7 +234,7 @@ QString DatabaseSchema::getCreateTableLocalMomentInteract() {
 QStringList DatabaseSchema::getCreateTriggers()
 {
     return {
-        // 消息插入触发器 
+        // 1. 消息插入时更新会话最后消息和未读数
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_conversation_insert
             AFTER INSERT ON messages
@@ -248,13 +248,12 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 消息删除触发器 
+        // 2. 消息删除时更新会话最后消息（仅在删除的是最后一条时）
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_conversation_delete
             AFTER DELETE ON messages
             FOR EACH ROW
             BEGIN
-                -- 只有当删除的是最后一条消息时才更新
                 UPDATE conversations
                 SET last_message_content = (
                     SELECT content FROM messages
@@ -273,9 +272,9 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 唯一当前用户触发器
+        // 3. 插入新用户且 is_current=1 时，确保其他用户 is_current=0
         R"(
-            CREATE TRIGGER IF NOT EXISTS trigger_unique_current_user
+            CREATE TRIGGER IF NOT EXISTS trigger_unique_current_user_insert
             BEFORE INSERT ON users
             WHEN NEW.is_current = 1
             BEGIN
@@ -283,7 +282,17 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 1. 用户头像变更时更新对应单聊会话的头像
+        // 4. 更新用户且 is_current 被设为 1 时，确保其他用户 is_current=0
+        R"(
+            CREATE TRIGGER IF NOT EXISTS trigger_unique_current_user_update
+            BEFORE UPDATE ON users
+            WHEN NEW.is_current = 1
+            BEGIN
+                UPDATE users SET is_current = 0 WHERE user_id != NEW.user_id;
+            END
+        )",
+
+        // 5. 用户头像变更时更新对应单聊会话的头像
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_update_conversation_avatar_on_user_update
             AFTER UPDATE OF avatar, avatar_local_path ON users
@@ -297,7 +306,7 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 2. 联系人备注名变更时更新对应会话的title
+        // 6. 联系人备注名变更时更新对应单聊会话的标题
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_update_conversation_title_on_contact_update
             AFTER UPDATE OF remark_name ON contacts
@@ -315,7 +324,7 @@ QStringList DatabaseSchema::getCreateTriggers()
             END
         )",
 
-        // 3. 群组信息变更时更新对应群聊会话的title和头像
+        // 7. 群组信息变更时更新对应群聊会话的标题和头像
         R"(
             CREATE TRIGGER IF NOT EXISTS trigger_update_conversation_on_group_update
             AFTER UPDATE OF group_name, avatar, avatar_local_path ON groups

@@ -6,7 +6,6 @@ add_library(storage STATIC ${STORAGE_SOURCES})
 # 包含目录
 target_include_directories(storage PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/databaseTable
 )
 
 # 查找必要的Qt模块

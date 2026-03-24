@@ -15,7 +15,7 @@ class AppController : public QObject
 {
     Q_OBJECT
 public:
-    explicit AppController(DatabaseManager *databaseManager, QObject *parent = nullptr);
+    explicit AppController(QObject *parent = nullptr);
     ~AppController();
     UserController *userController() const { return m_userController; }
     ConversationController *conversationController() const { return m_conversationController; }

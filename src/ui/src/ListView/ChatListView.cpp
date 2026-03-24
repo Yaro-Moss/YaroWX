@@ -208,17 +208,17 @@ Conversation ChatListView::getConversationFromIndex(const QModelIndex &index) co
         return conversationInfo;
     }
 
-    conversationInfo.conversationId = index.data(ConversationIdRole).toLongLong();
-    conversationInfo.groupId = index.data(GroupIdRole).toLongLong();
-    conversationInfo.userId = index.data(UserIdRole).toLongLong();
-    conversationInfo.type = index.data(TypeRole).toInt();
-    conversationInfo.title = index.data(TitleRole).toString();
-    conversationInfo.avatar = index.data(AvatarRole).toString();
-    conversationInfo.avatarLocalPath = index.data(AvatarLocalPathRole).toString();
-    conversationInfo.lastMessageContent = index.data(LastMessageContentRole).toString();
-    conversationInfo.lastMessageTime = index.data(LastMessageTimeRole).toLongLong();
-    conversationInfo.unreadCount = index.data(UnreadCountRole).toInt();
-    conversationInfo.isTop = index.data(IsTopRole).toBool();
+    conversationInfo.setconversation_id(index.data(ConversationIdRole).toLongLong());
+    conversationInfo.setgroup_id(index.data(GroupIdRole).toLongLong());
+    conversationInfo.setuser_id(index.data(UserIdRole).toLongLong());
+    conversationInfo.settype(index.data(TypeRole).toInt());
+    conversationInfo.settitle(index.data(TitleRole).toString());
+    conversationInfo.setavatar(index.data(AvatarRole).toString());
+    conversationInfo.setavatar_local_path(index.data(AvatarLocalPathRole).toString());
+    conversationInfo.setlast_message_content(index.data(LastMessageContentRole).toString());
+    conversationInfo.setlast_message_time(index.data(LastMessageTimeRole).toLongLong());
+    conversationInfo.setunread_count(index.data(UnreadCountRole).toInt());
+    conversationInfo.setis_top(index.data(IsTopRole).toBool());
 
     return conversationInfo;
 }

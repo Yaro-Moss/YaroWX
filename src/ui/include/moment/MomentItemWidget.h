@@ -42,7 +42,6 @@ private:
     void clearLayout(QLayout *layout);
 
     Ui::MomentItemWidget *ui;
-    Contact momentsSender;
     Contact m_currentUser;
 
     LocalMoment m_localMoment;

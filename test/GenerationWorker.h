@@ -10,8 +10,6 @@
 #include "Message.h"
 
 // 前向声明
-class UserTable;
-class ContactTable;
 
 class GenerationWorker : public QObject
 {
@@ -20,9 +18,6 @@ class GenerationWorker : public QObject
 public:
     explicit GenerationWorker(QObject *parent = nullptr);
     ~GenerationWorker();
-
-    // 初始化数据库连接
-    bool initDatabase();
 
     void sendMsg(QVector<Message> messages);
     QString buildPrompt(const QVector<Message> &messages);
@@ -60,7 +55,7 @@ signals:
     void errorOccurred(const QString& error);
 
     // 响应消息
-    void reaction(Message msg);
+    void reaction(const Message &msg);
 private:
 
     // 生成随机数据函数
@@ -71,14 +66,10 @@ private:
     int generateRandomGender();
     QString generateRandomRemarkName(const QString& nickname);
     QString generateRandomDescription();
-    QJsonArray generateRandomTags();
+    QString generateRandomTags();
     QString generateRandomPhoneNote();
     QString generateRandomEmailNote();
     QString generateRandomSource();
-
-    // 数据库操作对象
-    UserTable* m_userTable = nullptr;
-    ContactTable* m_contactTable = nullptr;
 
     QMutex m_mutex;
     bool m_initialized = false;

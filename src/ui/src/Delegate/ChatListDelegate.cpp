@@ -47,7 +47,7 @@ void ChatListDelegate::paint(QPainter *painter, const QStyleOptionViewItem
     QString avatarPath = index.data(AvatarLocalPathRole).toString();
     qint64 id = index.data(TargetIdRole).toLongLong();
     QString avatarText = QString();
-    if(m_contactController) avatarText = m_contactController->getContactFromModel(id).user.nickname;
+    if(m_contactController) avatarText = m_contactController->getContactFromModel(id).user.nicknameValue();
 
     if(avatarPath.isEmpty()) {
         avatarPath = index.data(AvatarRole).toString();

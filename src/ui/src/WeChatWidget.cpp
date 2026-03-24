@@ -1,18 +1,3 @@
-#include "WeChatWidget.h"
-#include "AudioPlayer.h"
-#include "ContactItemDelegate.h"
-#include "MomentWidgets.h"
-#include "ui_WeChatWidget.h"
-#include "RightPopover.h"
-#include "AddDialog.h"
-#include "MoreDialog.h"
-#include "FloatingDialog.h"
-#include "CurrentUserInfoDialog.h"
-#include "MediaDialog.h"
-#include "ImgLabel.h"
-#include "ChatListDelegate.h"
-#include "ChatMessageDelegate.h"
-#include "AppController.h"
 #include <QSplitter>
 #include <QFrame>
 #include <QPropertyAnimation>
@@ -34,7 +19,21 @@
 #include "ChatListView.h"
 #include "ChatMessageListView.h"
 #include "VoiceRecordDialog.h"
-
+#include "WeChatWidget.h"
+#include "AudioPlayer.h"
+#include "ContactItemDelegate.h"
+#include "MomentWidgets.h"
+#include "ui_WeChatWidget.h"
+#include "RightPopover.h"
+#include "AddDialog.h"
+#include "MoreDialog.h"
+#include "FloatingDialog.h"
+#include "CurrentUserInfoDialog.h"
+#include "MediaDialog.h"
+#include "ImgLabel.h"
+#include "ChatListDelegate.h"
+#include "ChatMessageDelegate.h"
+#include "AppController.h"
 
 WeChatWidget::WeChatWidget(AppController * appController, QWidget *parent)
     : QWidget(parent)
@@ -78,8 +77,9 @@ WeChatWidget::WeChatWidget(AppController * appController, QWidget *parent)
 
     initChatList();
     initMessageList();
-    initCurrentUser();
     initContactList();
+    initCurrentUser();
+
 
     //检查信息输入框状态，设置初始样式、连接信号
     updateSendButtonStyle();
@@ -104,7 +104,7 @@ void WeChatWidget::initChatList()
             conversationController, &ConversationController::handleToggleTop);
 
     connect(chatListView, &ChatListView::conversationMarkAsUnread,
-            conversationController, &ConversationController::handltoggleReadStatus);
+            conversationController, &ConversationController::handletoggleReadStatus);
 
     connect(chatListView, &ChatListView::conversationToggleMute,
             conversationController, &ConversationController::handleToggleMute);
@@ -124,12 +124,12 @@ void WeChatWidget::initChatList()
                         currentConversation = chatListView->getSelectedConversation();
 
                     // 会话显示
-                    ui->chatPartnerLabel->setText(currentConversation.title);
+                    ui->chatPartnerLabel->setText(currentConversation.titleValue());
                     ui->rightStackedWidget->setCurrentWidget(ui->rightStackedWidgetPage0);
                     ui->rightStackedWidgetPage0->show();
 
                     messageController->setCurrentConversation(currentConversation);
-                    conversationController->setCurrentConversationId(currentConversation.conversationId);
+                    conversationController->setCurrentConversationId(currentConversation.conversation_idValue());
                     QTimer::singleShot(100, this, [=]() {
                         if (chatMessageListView != nullptr && !chatMessageListView->isHidden()) {
                             chatMessageListView->scrollToBottom();
@@ -137,32 +137,34 @@ void WeChatWidget::initChatList()
                     });
 
                     // 标记已读
-                    conversationController->clearUnreadCount(currentConversation.conversationId);
+                    conversationController->clearUnreadCount(currentConversation.conversation_idValue());
                 } else if (!deselected.isEmpty()) {
                     ui->rightStackedWidgetPage0->hide();
                 }
-            });
-    // 处理其他业务如顶置聊天时重新加载，选中加载前的选中项
-    connect(conversationController, &ConversationController::conversationLoaded, this,
-            [this](QString functionCaller){
-                if(!functionCaller.isEmpty() && functionCaller=="createSingleChat"){
-                    qDebug()<<"createSingleChat";
-                    on_switchtoMessageInterface(m_contact);
-                    return;
-                }
+    });
 
-                if (currentConversation.isValid()) {
-                    ChatListModel *m_model = conversationController->chatListModel();
-                    QModelIndex index = m_model->getConversationIndex(currentConversation.conversationId);
+    connect(conversationController, &ConversationController::createSingleChatSuccessfully, this,
+        [this](const Conversation&conversation){
 
-                    if (index.isValid()) {
-                        chatListView->setCurrentIndex(index);
-                        chatListView->scrollTo(index);
-                    }
-                }
-            });
+        ChatListModel *m_model = conversationController->chatListModel();
+        QModelIndex index = m_model->getConversationIndex(conversation.conversation_idValue());
+
+        if (index.isValid()) {
+            chatListView->setCurrentIndex(index);
+            chatListView->scrollTo(index);
+        }
+    });
+
+    connect(conversationController, &ConversationController::messageSave, this,
+        [this](){
+        QModelIndex index = conversationController->chatListModel()->
+                                    getConversationIndex(currentConversation.conversation_idValue());
+        chatListView->setCurrentIndex(index);
+        contactTreeView->scrollTo(index);
+    });
+
     // 加载会话列表
-    conversationController->loadConversations(0);
+    conversationController->loadConversations();
 }
 
 // 初始化消息列表
@@ -210,7 +212,7 @@ void WeChatWidget::initMessageList()
     // 保存消息时刷新会话列表，（最后一条消息和时间。）
     connect(messageController, &MessageController::messageSaved, this, [this](){
         chatMessageListView->scrollToBottom();
-        conversationController->loadConversations(0);
+        conversationController->loadConversations();
     });
 
     // 点击消息时信号处理
@@ -235,6 +237,7 @@ void WeChatWidget::initMessageList()
 
                 messageController->getMediaItems(conversationId);
                 mediaDialog->close();
+                mediaDialog->showNormal();
                 mediaDialog->show();
             });
 
@@ -261,7 +264,7 @@ void WeChatWidget::initMessageList()
     connect(chatMessageDelegate, &ChatMessageDelegate::avatarClicked, this,
         [this](const qint64 &senderId){
                 Contact contact = contactController->getContactFromModel(senderId);
-                if(contact.user.isCurrent){
+                if(contact.user.is_currentValue()){
                     CurrentUserInfoDialog *currentUserInfoDialog = new CurrentUserInfoDialog(this);
                     currentUserInfoDialog->setAttribute(Qt::WA_DeleteOnClose);
                     currentUserInfoDialog->setCurrentUser(contact);
@@ -297,14 +300,15 @@ void WeChatWidget::initCurrentUser()
 {
     ui->avatarPushButton->setWeChatWidget(this);
     ui->avatarPushButton->setMediaDialog(mediaDialog);
-    connect(contactController, &ContactController::currentUserLoaded, this,
-            [this](int reqId, const Contact& contact){
-                currentUser = contact;
-                userController->setCurrentUser(contact.user);
-                messageController->setCurrentUser(1,contact.user);
-                ui->avatarPushButton->setContact(currentUser);
+    connect(contactController, &ContactController::contactsLoaded, this,
+            [this](){
+                m_currentLoginUser = contactController->getCurrentLoginUser();
+                userController->setCurrentLoginUser(m_currentLoginUser);
+                messageController->setCurrentLoginUser(m_currentLoginUser);
+                localMomentController->setCurrentLoginUser(m_currentLoginUser);
+                ui->avatarPushButton->setContact(m_currentLoginUser);
             });
-    contactController->getCurrentUser();
+    contactController->getAllContacts();
 }
 
 // 联系人列表
@@ -340,26 +344,26 @@ void WeChatWidget::initContactList()
             });
     connect(contactTreeView, &ContactTreeView::starFriend, this,
             [this](const Contact &contact){
-                contactController->setContactStarred(0, contact.userId, !contact.isStarred);
+                contactController->setContactStarred(contact.user_idValue(), !contact.is_starredValue());
             });
     connect(contactTreeView, &ContactTreeView::removeFriend, this,
             [this](const Contact &contact){
-                contactController->deleteContact(0, contact.userId);
+                contactController->deleteContact(contact.user_idValue());
             });
 
     // 删除成功
-    connect(contactController, &ContactController::contactDeleted, this,
-            [this](int reqId, bool success, const QString& error){
-                if(!success) qDebug()<<error;
+    connect(contactController, &ContactController::contactRemoved, this,
+            [this](qint64 userId){
+                qDebug()<<userId;
                 ui->rightStackedWidgetpage1->hide();
             });
 
     // 其他业务情况加载时重新选中加载前的项
-    connect(contactController, &ContactController::allContactsLoaded,
-            this, [this](int reqId, const QList<Contact>& contacts){
+    connect(contactController, &ContactController::contactsLoaded,
+            this, [this](){
                 if (m_contact.isValid()) {
                     ContactTreeModel *m_model = contactController->contactTreeModel();
-                    QModelIndex contactIndex = m_model->findContactIndex(m_contact.userId);
+                    QModelIndex contactIndex = m_model->findContactIndex(m_contact.user_idValue());
 
                     if (contactIndex.isValid()) {
                         contactTreeView->setCurrentIndex(contactIndex);
@@ -367,7 +371,6 @@ void WeChatWidget::initContactList()
                     }
                 }
             });
-    contactController->getAllContacts(0);
 }
 
 WeChatWidget::~WeChatWidget()
@@ -640,7 +643,7 @@ void WeChatWidget::on_contactsToolButton_clicked()
     // 如果没有选中联系人，就不显示联系人详细界面。
     if(!contactTreeView->getSelectedContact().isValid())
         ui->rightStackedWidgetpage1->hide();
-    contactController->getAllContacts(0);
+    contactController->getAllContacts();
 
 }
 
@@ -660,7 +663,6 @@ void WeChatWidget::on_chatInterfaceToolButton_clicked()
     leftStackedWidget->setCurrentIndex(0);
 
     if(!currentConversation.isValid()) ui->rightStackedWidgetPage0->hide();
-    conversationController->loadConversations(0);
 }
 
 void WeChatWidget::on_rightDialogToolButton_clicked()
@@ -680,15 +682,15 @@ void WeChatWidget::on_rightDialogToolButton_clicked()
         connect(rightPopover,&RightPopover::cloesDialog,this, &WeChatWidget::on_rightDialogToolButton_clicked);
         rightPopover->setAttribute(Qt::WA_DeleteOnClose);
 
-        rightPopover->setContact(contactController->getContactFromModel(currentConversation.userId));
+        rightPopover->setContact(contactController->getContactFromModel(currentConversation.user_idValue()));
         rightPopover->setMediaDialog(mediaDialog);
         rightPopover->setWeChatWidget(this);
 
         QCheckBox *isTopCheckBox = rightPopover->findChild<QCheckBox*>("isTopCheckBox");
-        isTopCheckBox->setChecked(currentConversation.isTop);
+        isTopCheckBox->setChecked(currentConversation.is_topValue());
         connect(isTopCheckBox, &QCheckBox::toggled, this,
             [this](){
-            conversationController->handleToggleTop(currentConversation.conversationId);
+            conversationController->handleToggleTop(currentConversation.conversation_idValue());
         });
 
         //先在窗口右外侧看不到的地方显示
@@ -757,7 +759,7 @@ void WeChatWidget::on_floatingToolButton_clicked()
 
 void WeChatWidget::on_avatarPushButton_clicked()
 {
-    contactController->getCurrentUser();// 点击头像按钮主动加载当前用户；
+    /*contactController->getCurrentUser()*/;// 点击头像按钮主动加载当前用户；
 }
 
 void WeChatWidget::on_closeButton_clicked()
@@ -872,19 +874,19 @@ void WeChatWidget::on_recordVoiceButton_clicked()
     }
 }
 
-void WeChatWidget::on_switchtoMessageInterface(Contact contact)
+void WeChatWidget::on_switchtoMessageInterface(const Contact &contact)
 {
     ui->rightStackedWidget->setCurrentIndex(0);
     ui->leftStackedWidget->setCurrentIndex(0);
 
     ChatListModel *m_model = conversationController->chatListModel();
-    QModelIndex index = m_model->getConversationIndexByContactId(contact.userId);
+    QModelIndex index = m_model->getConversationIndexByContactId(contact.user_idValue());
 
     if (index.isValid()) {
         chatListView->setCurrentIndex(index);
         chatListView->scrollTo(index);
     }else{
-        conversationController->createSingleChat(m_contact);
+        conversationController->createSingleChat(contact);
     }
 }
 
@@ -897,7 +899,7 @@ void WeChatWidget::on_momentButton_clicked()
     momentMainWidget->setWeChatWidget(this);
     momentMainWidget->setMediaDialog(mediaDialog);
     momentMainWidget->setContactController(contactController);
-    momentMainWidget->setCurrentUser(currentUser);
+    momentMainWidget->setCurrentUser(m_currentLoginUser);
     momentMainWidget->setLocalMomentController(localMomentController);
 
     // 计算屏幕中心并移动窗口
@@ -907,5 +909,6 @@ void WeChatWidget::on_momentButton_clicked()
     int y = screenGeometry.center().y() - momentMainWidget->height() / 2;
     momentMainWidget->move(x, y);
 
+    momentMainWidget->showNormal();
     momentMainWidget->show();
 }

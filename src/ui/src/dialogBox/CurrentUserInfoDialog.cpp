@@ -28,13 +28,13 @@ CurrentUserInfoDialog::~CurrentUserInfoDialog()
 void CurrentUserInfoDialog::setCurrentUser(const Contact &user)
 {
     currentUser = user;
-    QPixmap avatar = QPixmap(user.user.avatarLocalPath);
+    QPixmap avatar = QPixmap(user.user.avatar_local_pathValue());
     if(avatar.isNull())
-        avatar = AvatarButton::generateDefaultAvatar(QSize(500,500), currentUser.user.nickname);
+        avatar = AvatarButton::generateDefaultAvatar(QSize(500,500), currentUser.user.nicknameValue());
     avatarLabel ->setPixmap(avatar);
-    account->setText(currentUser.user.account);
-    nickname->setText(currentUser.user.nickname);
-    region->setText(currentUser.user.region);
+    account->setText(currentUser.user.accountValue());
+    nickname->setText(currentUser.user.nicknameValue());
+    region->setText(currentUser.user.regionValue());
 }
 
 void CurrentUserInfoDialog::setMediaDialog(MediaDialog* mediaDialog){

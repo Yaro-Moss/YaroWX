@@ -108,6 +108,7 @@ private:
     WeChatWidget *m_weChatWidget;
 
     Contact m_currentUser;
+    int m_oldMomentCount = 0;
 
 };
 

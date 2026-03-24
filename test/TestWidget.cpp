@@ -1,4 +1,5 @@
 #include "TestWidget.h"
+#include "ORM.h"
 #include "ui_TestWidget.h"
 #include "GenerationWorker.h"
 #include "AppController.h"
@@ -20,7 +21,17 @@ TestWidget::TestWidget(AppController * appController, QWidget *parent)
     createWorkerThread();
 
     connect(m_messageController, &MessageController::send, m_worker, &GenerationWorker::sendMsg);
-    connect(m_worker, &GenerationWorker::reaction, m_messageController, &MessageController::saveMessage);
+    connect(m_worker, &GenerationWorker::reaction, this, [this](const Message &msg){
+        QtConcurrent::run([msg]() {
+            Orm orm;
+            Message copy = msg;
+            if (orm.insert(copy)) {
+                qDebug() << "Message saved to DB, id:" << copy.message_id();
+            } else {
+                qWarning() << "Failed to save message to DB, id:" << msg.message_id();
+            }
+        });
+    });
 
 }
 
@@ -66,9 +77,6 @@ void TestWidget::createWorkerThread()
             m_worker, &GenerationWorker::deleteLater);
     connect(m_workerThread, &QThread::finished,
             this, &TestWidget::onWorkerFinished);
-
-    connect(m_workerThread, &QThread::started, m_worker, &GenerationWorker::initDatabase);
-
 
     // 启动工作线程
     m_workerThread->start();

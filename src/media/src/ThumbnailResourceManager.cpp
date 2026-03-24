@@ -39,11 +39,11 @@ ThumbnailResourceManager::~ThumbnailResourceManager()
 QPixmap ThumbnailResourceManager::getThumbnail(const QString& resourcePath, const QSize& size,
                                        MediaType type, int radius, const QString& iconPath, QString name)
 {
-    if(resourcePath.isEmpty()) {
+    if(resourcePath.isEmpty()&&type!=MediaType::Avatar) {
         return QPixmap();
     }
 
-    QString cacheKey = generateCacheKey(resourcePath, size, type, radius, iconPath);
+    QString cacheKey = generateCacheKey(resourcePath, size, type, radius, iconPath, name);
 
     QMutexLocker locker(&m_mutex);
 
@@ -295,13 +295,18 @@ QPixmap ThumbnailResourceManager::processVideoThumb(const QString &resourcePath,
     return result;
 }
 
-QString ThumbnailResourceManager::generateCacheKey(const QString& path, const QSize& size,
-                                               MediaType type, int radius, const QString& iconPath) const
+QString ThumbnailResourceManager::generateCacheKey(const QString& path,
+                                                   const QSize& size,
+                                                   MediaType type,
+                                                   int radius,
+                                                   const QString& iconPath,
+                                                   const QString& name) const
 {
     QString baseKey = QString("%1_%2_%3_%4")
     .arg(path)
-        .arg(static_cast<int>(type))
-        .arg(radius);
+    .arg(static_cast<int>(type))
+    .arg(radius)
+    .arg(name);
 
     // 如果size为空，表示原图，在缓存键中特殊标记
     if (size.isEmpty()) {

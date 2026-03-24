@@ -53,6 +53,8 @@ private:
     void onLoginSuccess();
     void onLoginFailed(const QString &reason);
     void onNetworkError(const QString &error);
+    void onRegisterSuccess(qint64 userId);
+    void onRegisterFailed(const QString &reason);
 };
 
 

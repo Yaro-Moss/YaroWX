@@ -73,22 +73,23 @@ void ContactItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
     ThumbnailResourceManager* mediaManager = ThumbnailResourceManager::instance();
     painter->setRenderHint(QPainter::Antialiasing,true);
 
-    QPixmap avatar = mediaManager->getThumbnail(contact.user.avatarLocalPath,
+    QPixmap avatar = mediaManager->getThumbnail(contact.user.avatar_local_pathValue(),
                                                 QSize(avatarSize, avatarSize),
                                                 MediaType::Avatar,
                                                 5,
                                                 "",
-                                                contact.user.nickname
+                                                contact.user.nicknameValue()
                                                 );
 
     if(!avatar.isNull()) {
         painter->drawPixmap(avatarRect, avatar);
     } else {
-        drawDefaultAvatar(painter, avatarRect, contact.getDisplayName(), 5);
+        drawDefaultAvatar(painter, avatarRect, contact.user.nicknameValue(), 5);
     }
 
     // 绘制文本
-    QString text = contact.getDisplayName();
+    QString text = contact.remark_nameValue();
+    if(text.isEmpty()) text = contact.user.nicknameValue();
     QRect textRect(avatarRect.right() + margin, avatarRect.top(),
                    rect.width()-avatarSize-margin*3, avatarSize);
 

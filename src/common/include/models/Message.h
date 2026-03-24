@@ -1,11 +1,7 @@
-#ifndef MESSAGE_H
-#define MESSAGE_H
-
-#include <QJsonObject>
-#include <QtSql/QSqlQuery>
-#include <QString>
-#include <QDateTime>
+#pragma once
 #include "FormatFileSize.h"
+#include "ORM_Macros.h"
+#include <QObject>
 
 // 消息类型枚举
 enum class MessageType {
@@ -16,99 +12,69 @@ enum class MessageType {
     VOICE = 4
 };
 
-struct Message {
-    qint64 messageId = 0;
-    qint64 conversationId = 0;
-    qint64 senderId = 0;
-    qint64 consigneeId = 0;
-    MessageType type = MessageType::TEXT;
-    QString content;
-    QString filePath;
-    QString fileUrl;
-    qint64 fileSize = 0;
-    int duration = 0;
-    QString thumbnailPath;
-    qint64 timestamp = 0;
+class Message {
+    Q_GADGET
+    ORM_MODEL(Message, "messages")
 
-    // 发送者信息（非数据库字段，用于显示）
-    QString senderName;
-    QString avatar;
+    ORM_FIELD(qint64, message_id)          // INTEGER PRIMARY KEY
+    ORM_FIELD(qint64, conversation_id)     // INTEGER NOT NULL
+    ORM_FIELD(qint64, sender_id)           // INTEGER NOT NULL
+    ORM_FIELD(qint64, consignee_id)        // INTEGER NOT NULL
+    ORM_FIELD(int, type)                   // INTEGER NOT NULL
+    ORM_FIELD(QString, content)            // TEXT
+    ORM_FIELD(QString, file_path)          // TEXT
+    ORM_FIELD(QString, file_url)           // TEXT
+    ORM_FIELD(qint64, file_size)           // INTEGER
+    ORM_FIELD(int, duration)               // INTEGER
+    ORM_FIELD(QString, thumbnail_path)     // TEXT
+    ORM_FIELD(qint64, msg_time)            // INTEGER
+
+
+private:
+    QVariant m_senderName ;
+    QVariant m_avatar;
+
+
+public:
+    void setSenderName(QString senderName){
+        m_senderName = senderName;
+    }
+    void setAvatar(QString avatar){
+        m_avatar = avatar;
+    }
+    QString senderName() const {
+        return m_senderName.toString();
+    }
+    QString avatar()const{
+        return m_avatar.toString();
+    }
 
     Message() = default;
-    
-    explicit Message(const QSqlQuery& query) {
-        messageId = query.value("message_id").toLongLong();
-        conversationId = query.value("conversation_id").toLongLong();
-        senderId = query.value("sender_id").toLongLong();
-        consigneeId = query.value("consignee_id").toLongLong();
-        type = static_cast<MessageType>(query.value("type").toInt());
-        content = query.value("content").toString();
-        filePath = query.value("file_path").toString();
-        fileUrl = query.value("file_url").toString();
-        fileSize = query.value("file_size").toLongLong();
-        duration = query.value("duration").toInt();
-        thumbnailPath = query.value("thumbnail_path").toString();
-        timestamp = query.value("msg_time").toLongLong();
-    }
 
-    QJsonObject toJson() const {
-        return {
-            {"message_id", QString::number(messageId)},
-            {"conversation_id", QString::number(conversationId)},
-            {"sender_id", QString::number(senderId)},
-            {"consignee_id", QString::number(consigneeId)},
-            {"type", static_cast<int>(type)},
-            {"content", content},
-            {"file_path", filePath},
-            {"file_url", fileUrl},
-            {"file_size", fileSize},
-            {"duration", duration},
-            {"thumbnail_path", thumbnailPath},
-            {"msg_time", timestamp}
-        };
-    }
-
-    static Message fromJson(const QJsonObject& json) {
-        Message msg;
-        msg.messageId = json["message_id"].toString().toLongLong();
-        msg.conversationId = json["conversation_id"].toString().toLongLong();
-        msg.senderId = json["sender_id"].toString().toLongLong();
-        msg.consigneeId = json["consignee_id"].toString().toLongLong();
-        msg.type = static_cast<MessageType>(json["type"].toInt());
-        msg.content = json["content"].toString();
-        msg.filePath = json["file_path"].toString();
-        msg.fileUrl = json["file_url"].toString();
-        msg.fileSize = json["file_size"].toVariant().toLongLong();
-        msg.duration = json["duration"].toInt();
-        msg.thumbnailPath = json["thumbnail_path"].toString();
-        msg.timestamp = json["msg_time"].toVariant().toLongLong();
-        return msg;
-    }
-
-    bool isValid() const {
-        return messageId > 0 && conversationId > 0 && senderId > 0;
+        bool isValid() const {
+            return message_idValue() > 0 && conversation_idValue() > 0 && sender_idValue() > 0;
     }
 
     // 便捷方法
-    bool isText() const { return type == MessageType::TEXT; }
-    bool isImage() const { return type == MessageType::IMAGE; }
-    bool isVideo() const { return type == MessageType::VIDEO; }
-    bool isFile() const { return type == MessageType::FILE; }
-    bool isVoice() const { return type == MessageType::VOICE; }
+    bool isText() const { return static_cast<MessageType>(typeValue()) == MessageType::TEXT; }
+    bool isImage() const { return static_cast<MessageType>(typeValue()) == MessageType::IMAGE; }
+    bool isVideo() const { return static_cast<MessageType>(typeValue()) == MessageType::VIDEO; }
+    bool isFile() const { return static_cast<MessageType>(typeValue()) == MessageType::FILE; }
+    bool isVoice() const { return static_cast<MessageType>(typeValue()) == MessageType::VOICE; }
     bool isMedia() const { return isImage() || isVideo() || isVoice(); }
-    bool hasFile() const { return !filePath.isEmpty() || !fileUrl.isEmpty(); }
-    bool hasThumbnail() const { return !thumbnailPath.isEmpty(); }
+    bool hasFile() const { return !file_pathValue().isEmpty() || !file_urlValue().isEmpty(); }
+    bool hasThumbnail() const { return !thumbnail_pathValue().isEmpty(); }
 
     QString formattedFileSize() const {
-        return formatFileSize(fileSize);
+        return formatFileSize(file_sizeValue());
     }
 
     QString formattedDuration() const {
-        if (duration <= 0) return "0:00:00";
+        if (durationValue() <= 0) return "0:00:00";
 
         // 1. 拆分时间单位：总秒数 → 时、分、秒
-        int hours = duration / 3600;
-        int remainingSeconds = duration % 3600;
+        int hours = durationValue()/ 3600;
+        int remainingSeconds = durationValue() % 3600;
         int minutes = remainingSeconds / 60;
         int seconds = remainingSeconds % 60;
 
@@ -119,12 +85,6 @@ struct Message {
     }
 
     bool isOwn(qint64 currentUserId) const {
-        return senderId == currentUserId;
+        return sender_id() == currentUserId;
     }
-
 };
-
-Q_DECLARE_METATYPE(Message)
-
-
-#endif // MESSAGE_H

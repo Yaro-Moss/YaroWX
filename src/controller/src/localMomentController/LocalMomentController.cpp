@@ -1,528 +1,434 @@
 #include "LocalMomentController.h"
-#include "LocalMomentTable.h"
-#include "UserTable.h"
-#include <QDateTime>
+#include "ORM.h"
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
+#include <QJsonDocument>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QDebug>
-#include <QDir>
-#include <QStandardPaths>
+#include <QRandomGenerator>
+#include <QDateTime>
 
-LocalMomentController::LocalMomentController(DatabaseManager* dbManager, QObject* parent)
-    : QObject(parent)
-    , m_dbManager(dbManager)
-    , m_localMomentTable(nullptr)
-    , m_reqIdCounter(0)
-    , m_loading(false)
-    , m_currentOffset(0)
-    , m_hasMore(true)
-{
-    if (m_dbManager) {
-        // 从DatabaseManager获取LocalMomentTable
-        m_localMomentTable = m_dbManager->localMomentTable();
-        connectSignals();
-
-        // 异步加载当前用户
-        if (auto userTable = m_dbManager->userTable()) {
-            int reqId = generateReqId();
-            QMetaObject::invokeMethod(userTable, "getCurrentUser",
-                                      Qt::QueuedConnection,
-                                      Q_ARG(int, reqId));
-            connect(userTable, &UserTable::currentUserLoaded, this, &LocalMomentController::setCurrentUser);
-        }
-    } else {
-        qWarning() << "LocalMomentController: DatabaseManager is null";
-    }
-}
-
-LocalMomentController::~LocalMomentController() = default;
-
-// ------------------------------ 辅助方法 ------------------------------
-int LocalMomentController::generateReqId()
-{
-    return m_reqIdCounter.fetchAndAddAcquire(1);
-}
-
-void LocalMomentController::connectSignals()
-{
-    if (!m_localMomentTable) {
-        qWarning() << "LocalMomentTable is null, cannot connect signals";
-        return;
-    }
-
-    // 连接LocalMomentTable信号
-    connect(m_localMomentTable, &LocalMomentTable::momentSaved, this, &LocalMomentController::onMomentSaved);
-    connect(m_localMomentTable, &LocalMomentTable::momentsLoaded, this, &LocalMomentController::onMomentsLoaded);
-    connect(m_localMomentTable, &LocalMomentTable::momentInteractLoaded, this, &LocalMomentController::onMomentInteractLoaded);
-    connect(m_localMomentTable, &LocalMomentTable::expiredMomentsCleared, this, &LocalMomentController::onExpiredMomentsCleared);
-    connect(m_localMomentTable, &LocalMomentTable::dbError, this, &LocalMomentController::onDbError);
-}
-
+// 生成唯一朋友圈ID
 qint64 LocalMomentController::generateMomentId()
 {
-    // 生成唯一ID：时间戳 + 随机数
-    return QDateTime::currentMSecsSinceEpoch() + rand() % 1000;
+    return QDateTime::currentMSecsSinceEpoch() + QRandomGenerator::global()->generate() % 1000;
 }
 
-LocalMoment LocalMomentController::createMoment(const QString& content,
-                                                const QVector<MomentImageInfo>& images,
-                                                const MomentImageInfo& video,
-                                                int privacyType)
+// 转换：数据库模型 -> 业务模型
+LocalMoment LocalMomentController::fromDbToModel(const LocalMomentDb& dbMoment)
 {
     LocalMoment moment;
-    moment.momentId = generateMomentId();
-    moment.userId = m_currentUser.userId;
-    moment.username = m_currentUser.nickname;
-    moment.avatarLocalPath = m_currentUser.avatarLocalPath;
-    moment.avatarUrl = m_currentUser.avatar;
-    moment.content = content;
-
-    // 视频设置（互斥：有视频则图片为空）
-    if (!video.url.isEmpty()||!video.localPath.isEmpty()) {
-        moment.videoUrl = video.url;
-        moment.videoLocalPath = video.localPath;
-        moment.videoDownloadStatus = video.downloadStatus;
-    } else {
-        // 图片设置
-        moment.images = images;
-    }
-
-    // 权限与缓存
-    moment.privacyType = privacyType;
-    moment.isDeleted = false;
-    moment.syncStatus = 1; // 待同步到服务端
-    // 设置过期时间：30天后
-    moment.expireTime = QDateTime::currentSecsSinceEpoch() + 30 * 24 * 3600;
-    moment.createTime = QDateTime::currentSecsSinceEpoch();
-    moment.localUpdateTime = moment.createTime;
-
+    moment.momentId = dbMoment.moment_idValue();
+    moment.userId = dbMoment.user_idValue();
+    moment.username = dbMoment.usernameValue();
+    moment.avatarLocalPath = dbMoment.avatar_local_pathValue();
+    moment.avatarUrl = dbMoment.avatar_urlValue();
+    moment.content = dbMoment.contentValue();
+    moment.videoLocalPath = dbMoment.video_local_pathValue();
+    moment.videoUrl = dbMoment.video_urlValue();
+    moment.videoDownloadStatus = dbMoment.video_download_statusValue();
+    moment.imagesFromJson(dbMoment.images_infoValue());
+    moment.privacyType = dbMoment.privacy_typeValue();
+    moment.isDeleted = dbMoment.is_deletedValue();
+    moment.syncStatus = dbMoment.sync_statusValue();
+    moment.expireTime = dbMoment.expire_timeValue();
+    moment.createTime = dbMoment.create_timeValue();
+    moment.localUpdateTime = dbMoment.local_update_timeValue();
     return moment;
 }
 
-// ------------------------------ 公开方法 ------------------------------
-void LocalMomentController::setCurrentUser(int reqId, const User& user)
+// 转换：业务模型 -> 数据库模型
+LocalMomentDb LocalMomentController::fromModelToDb(const LocalMoment& model)
 {
-    if (user.userId != -1) {
-        m_currentUser = user;
-        // 用户切换后重新加载朋友圈
-        loadRecentMoments();
+    LocalMomentDb dbMoment;
+    dbMoment.setmoment_id(model.momentId);
+    dbMoment.setuser_id(model.userId);
+    dbMoment.setusername(model.username);
+    dbMoment.setavatar_local_path(model.avatarLocalPath);
+    dbMoment.setavatar_url(model.avatarUrl);
+    dbMoment.setcontent(model.content);
+    dbMoment.setvideo_local_path(model.videoLocalPath);
+    dbMoment.setvideo_url(model.videoUrl);
+    dbMoment.setvideo_download_status(model.videoDownloadStatus);
+    dbMoment.setimages_info(model.imagesToJson());
+    dbMoment.setprivacy_type(model.privacyType);
+    dbMoment.setis_deleted(model.isDeleted ? 1 : 0);
+    dbMoment.setsync_status(model.syncStatus);
+    dbMoment.setexpire_time(model.expireTime);
+    dbMoment.setcreate_time(model.createTime);
+    dbMoment.setlocal_update_time(model.localUpdateTime);
+    return dbMoment;
+}
+
+// 互动模型转数据库模型
+LocalMomentInteractDb LocalMomentController::fromInteractModelToDb(const LocalMomentInteract& interact)
+{
+    LocalMomentInteractDb db;
+    db.setinteract_id(interact.interactId);
+    db.setmoment_id(interact.momentId);
+    db.setlikes(interact.likesToJson());
+    db.setcomments(interact.commentsToJson());
+    // local_update_time 由数据库默认填充
+    return db;
+}
+
+// 数据库模型转互动模型
+LocalMomentInteract LocalMomentController::fromInteractDbToModel(const LocalMomentInteractDb& db)
+{
+    return LocalMomentInteract::fromDb(db);
+}
+
+// 更新缓存中的朋友圈
+void LocalMomentController::updateMomentInCache(const LocalMoment& moment)
+{
+    for (int i = 0; i < m_moments.size(); ++i) {
+        if (m_moments[i].momentId == moment.momentId) {
+            m_moments[i] = moment;
+            emit momentUpdated(moment);
+            break;
+        }
     }
 }
 
+// 构造函数/析构函数
+LocalMomentController::LocalMomentController(QObject* parent)
+    : QObject(parent)
+{
+}
+
+LocalMomentController::~LocalMomentController()
+{
+}
+
+// 设置当前登录用户
+void LocalMomentController::setCurrentLoginUser(const Contact &user)
+{
+    m_currentLoginUser = user;
+}
+
+// 发布朋友圈
 void LocalMomentController::publishMoment(const QString& content,
                                           const QVector<MomentImageInfo>& images,
                                           const MomentImageInfo& video,
                                           int privacyType)
 {
-    if (!m_localMomentTable || m_currentUser.userId == 0) {
-        emit momentPublished(false, "Database not ready or user not logged in");
-        return;
+    LocalMoment moment;
+    moment.momentId = generateMomentId();
+    moment.userId = m_currentLoginUser.user_idValue();
+    moment.username = m_currentLoginUser.user.nicknameValue();
+    moment.avatarLocalPath = m_currentLoginUser.user.avatar_local_pathValue();
+    moment.avatarUrl = m_currentLoginUser.user.avatarValue();
+    moment.content = content;
+    if (!video.url.isEmpty() || !video.localPath.isEmpty()) {
+        moment.videoUrl = video.url;
+        moment.videoLocalPath = video.localPath;
+        moment.videoDownloadStatus = video.downloadStatus;
+    } else {
+        moment.images = images;
     }
+    moment.privacyType = privacyType;
+    moment.isDeleted = false;
+    moment.syncStatus = 1; // 待同步
+    moment.expireTime = QDateTime::currentSecsSinceEpoch() + 30 * 24 * 3600;
+    moment.createTime = QDateTime::currentSecsSinceEpoch();
+    moment.localUpdateTime = moment.createTime;
 
-    // 创建朋友圈对象
-    LocalMoment moment = createMoment(content, images, video, privacyType);
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, moment]() {
+                bool success = watcher->result();
+                emit momentPublished(success);
+                if (success) {
+                    m_moments.insert(0, moment);
+                    emit momentsLoaded(m_moments, m_hasMore);
+                }
+                watcher->deleteLater();
+            });
 
-    // 异步保存到数据库
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, "publishMoment");
-
-    QMetaObject::invokeMethod(m_localMomentTable, "saveMoment",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(const LocalMoment&, moment));
+    QFuture<bool> future = QtConcurrent::run([this, moment]() -> bool {
+        Orm orm;
+        LocalMomentDb db = fromModelToDb(moment);
+        return orm.insert(db);
+    });
+    watcher->setFuture(future);
 }
 
+// 加载最近朋友圈
 void LocalMomentController::loadRecentMoments(int limit)
 {
-    if (!m_localMomentTable || m_loading) return;
-
+    if (m_loading) return;
     m_loading = true;
     m_currentOffset = 0;
-    m_limit = limit;
+    m_hasMore = true;
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, "loadRecentMoments");
+    QFutureWatcher<QList<LocalMomentDb>>* watcher = new QFutureWatcher<QList<LocalMomentDb>>(this);
+    connect(watcher, &QFutureWatcher<QList<LocalMomentDb>>::finished, this,
+            [this, watcher, limit]() {
+                QList<LocalMomentDb> dbList = watcher->result();
+                QVector<LocalMoment> moments;
+                for (const auto& db : dbList) {
+                    moments.append(fromDbToModel(db));
+                }
+                m_moments = moments;
+                m_hasMore = (moments.size() == limit);
+                m_currentOffset = moments.size();
+                emit momentsLoaded(m_moments, m_hasMore);
+                m_loading = false;
+                watcher->deleteLater();
+            });
 
-    QMetaObject::invokeMethod(m_localMomentTable, "getMoments",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(int, limit),
-                              Q_ARG(int, m_currentOffset));
+    QFuture<QList<LocalMomentDb>> future = QtConcurrent::run([limit]() -> QList<LocalMomentDb> {
+        Orm orm;
+        return orm.findWhere<LocalMomentDb>(
+            "is_deleted = 0", {}, "create_time DESC", limit, 0
+            );
+    });
+    watcher->setFuture(future);
 }
 
+// 加载更多朋友圈
 void LocalMomentController::loadMoreMoments(int limit)
 {
-    if (!m_localMomentTable || m_loading || !m_hasMore) return;
-
+    if (m_loading || !m_hasMore) return;
     m_loading = true;
-    m_limit = limit;
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, "loadMoreMoments");
+    int offset = m_currentOffset;
+    QFutureWatcher<QList<LocalMomentDb>>* watcher = new QFutureWatcher<QList<LocalMomentDb>>(this);
+    connect(watcher, &QFutureWatcher<QList<LocalMomentDb>>::finished, this,
+            [this, watcher, offset, limit]() {
+                QList<LocalMomentDb> dbList = watcher->result();
+                if (dbList.isEmpty()) {
+                    m_hasMore = false;
+                } else {
+                    for (const auto& db : std::as_const(dbList)) {
+                        m_moments.append(fromDbToModel(db));
+                    }
+                    m_hasMore = (dbList.size() == limit);
+                    m_currentOffset = m_moments.size();
+                }
+                emit momentsLoaded(m_moments, m_hasMore);
+                m_loading = false;
+                watcher->deleteLater();
+            });
 
-    QMetaObject::invokeMethod(m_localMomentTable, "getMoments",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(int, limit),
-                              Q_ARG(int, m_currentOffset));
+    QFuture<QList<LocalMomentDb>> future = QtConcurrent::run([offset, limit]() -> QList<LocalMomentDb> {
+        Orm orm;
+        return orm.findWhere<LocalMomentDb>(
+            "is_deleted = 0", {}, "create_time DESC", limit, offset
+            );
+    });
+    watcher->setFuture(future);
 }
 
+// 加载朋友圈互动信息
 void LocalMomentController::loadMomentInteract(qint64 momentId)
 {
-    if (!m_localMomentTable) return;
+    QFutureWatcher<QList<LocalMomentInteractDb>>* watcher = new QFutureWatcher<QList<LocalMomentInteractDb>>(this);
+    connect(watcher, &QFutureWatcher<QList<LocalMomentInteractDb>>::finished, this,
+            [this, momentId, watcher]() {
+                QList<LocalMomentInteractDb> list = watcher->result();
+                if (!list.isEmpty()) {
+                    LocalMomentInteract interact = fromInteractDbToModel(list.first());
+                    for (int i = 0; i < m_moments.size(); ++i) {
+                        if (m_moments[i].momentId == momentId) {
+                            m_moments[i].interact = interact;
+                            emit momentUpdated(m_moments[i]);
+                            break;
+                        }
+                    }
+                }
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, QString("loadInteract_%1").arg(momentId));
-
-    QMetaObject::invokeMethod(m_localMomentTable, "getMomentInteract",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, momentId));
+    QFuture<QList<LocalMomentInteractDb>> future = QtConcurrent::run([momentId]() -> QList<LocalMomentInteractDb> {
+        Orm orm;
+        return orm.findWhere<LocalMomentInteractDb>("moment_id = ?", {momentId});
+    });
+    watcher->setFuture(future);
 }
 
+// 点赞/取消点赞
 void LocalMomentController::likeMoment(qint64 momentId, bool isLike)
 {
-    if (!m_localMomentTable || m_currentUser.userId == 0) return;
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+        [this, watcher, momentId, isLike]() {
+            bool success = watcher->result();
+            if (success)
+                loadMomentInteract(momentId);
+            watcher->deleteLater();
+    });
 
-    // 先获取当前互动数据
-    int reqId = generateReqId();
-    m_pendingOperations.insert(
-        reqId,
-        QString("likeMoment_%1_%2").arg(momentId).arg(isLike)
-        );
-    QMetaObject::invokeMethod(m_localMomentTable, "getMomentInteract",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, momentId));
+    QFuture<bool> future = QtConcurrent::run([this, momentId, isLike]() -> bool {
+        Orm orm;
+        auto list = orm.findWhere<LocalMomentInteractDb>("moment_id = ?", {momentId});
+        LocalMomentInteractDb db;
+        if (!list.isEmpty())
+            db = list.first();
+        else db.setmoment_id(momentId);
+
+        LocalMomentInteract interact = fromInteractDbToModel(db);
+        // 查找当前用户是否已点赞
+        auto it = std::find_if(interact.likes.begin(), interact.likes.end(),
+                               [this](const MomentLikeInfo& like) {
+                                   return like.userId == m_currentLoginUser.user_id();
+                               });
+        if (isLike && it == interact.likes.end()) {
+            MomentLikeInfo like;
+            like.userId = m_currentLoginUser.user_idValue();
+            like.username = m_currentLoginUser.user.nicknameValue();
+            like.avatarLocalPath = m_currentLoginUser.user.avatar_local_pathValue();
+            interact.likes.append(like);
+        } else if (!isLike && it != interact.likes.end()) {
+            interact.likes.erase(it);
+        } else {
+            return true; // 状态未变
+        }
+
+        bool success = false;
+        LocalMomentInteractDb newDb = fromInteractModelToDb(interact);
+        if (!list.isEmpty())
+            success = orm.update(newDb);
+        else success = orm.insert(newDb);
+
+        if(!success) qDebug()<<orm.lastError();
+        return success;
+
+    });
+    watcher->setFuture(future);
 }
 
+// 添加评论
 void LocalMomentController::addComment(qint64 momentId, const MomentCommentInfo& comment)
 {
-    if (!m_localMomentTable
-        || m_currentUser.userId == 0
-        || momentId < 0
-        || comment.commentId < 0
-        || (comment.content.isEmpty()&&comment.image.localPath.isEmpty())) {
-
-        qWarning() << "addComment failed: invalid params (momentId:" << momentId
-                   << ", commentId:" << comment.commentId << ")";
-        emit commentAdded(momentId, false, "Invalid comment params (empty content or invalid ID)");
+    if (momentId < 0 || comment.commentId < 0 ||
+        (comment.content.isEmpty() && comment.image.localPath.isEmpty())) {
         return;
     }
 
-    int reqId = generateReqId();
-    QString opKey = QString("addComment_%1").arg(momentId);
-    m_pendingOperations.insert(reqId, opKey);
-    // 缓存上层传入的**完整评论数据**（包含content/commentId/时间等）
-    m_pendingAddComments[momentId] = comment;
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, momentId]() {
+                bool success = watcher->result();
+                if (success) loadMomentInteract(momentId);
+                watcher->deleteLater();
+            });
 
-    QMetaObject::invokeMethod(m_localMomentTable, "getMomentInteract",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, momentId));
+    QFuture<bool> future = QtConcurrent::run([this, momentId, comment]() -> bool {
+        Orm orm;
+        auto list = orm.findWhere<LocalMomentInteractDb>("moment_id = ?", {momentId});
+        LocalMomentInteractDb db;
+        if (!list.isEmpty())
+            db = list.first();
+        else db.setmoment_id(momentId);
+
+        LocalMomentInteract interact = fromInteractDbToModel(db);
+        interact.comments.append(comment);
+        LocalMomentInteractDb newDb = fromInteractModelToDb(interact);
+
+        bool success = false;
+        if (!list.isEmpty())
+            success = orm.update(newDb);
+        else success = orm.insert(newDb);
+
+        if(!success) qDebug()<<orm.lastError();
+        return success;
+    });
+    watcher->setFuture(future);
 }
 
+// 删除评论
 void LocalMomentController::deleteComment(qint64 momentId, qint64 commentId)
 {
-    if (!m_localMomentTable || m_currentUser.userId == 0 || momentId <= 0 || commentId <= 0) {
-        qWarning() << "deleteComment failed: invalid params (momentId:" << momentId << ", commentId:" << commentId << ")";
-        return;
-    }
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, momentId, commentId]() {
+                bool success = watcher->result();
+                emit commentDeleted(momentId, commentId, success);
+                if (success) loadMomentInteract(momentId);
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, QString("deleteComment_%1_%2").arg(momentId).arg(commentId));
-
-    QMetaObject::invokeMethod(m_localMomentTable, "getMomentInteract",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, momentId));
+    QFuture<bool> future = QtConcurrent::run([this, momentId, commentId]() -> bool {
+        Orm orm;
+        auto list = orm.findWhere<LocalMomentInteractDb>("moment_id = ?", {momentId});
+        if (list.isEmpty()) return false;
+        LocalMomentInteract interact = fromInteractDbToModel(list.first());
+        bool removed = false;
+        for (auto it = interact.comments.begin(); it != interact.comments.end(); ++it) {
+            if (it->commentId == commentId) {
+                interact.comments.erase(it);
+                removed = true;
+                break;
+            }
+        }
+        if (!removed) return true; // 未找到，视为成功
+        LocalMomentInteractDb newDb = fromInteractModelToDb(interact);
+        return orm.update(newDb);
+    });
+    watcher->setFuture(future);
 }
 
-void LocalMomentController::updateMediaDownloadStatus(qint64 momentId, bool isVideo, const QString& mediaUrl, const QString& localPath, int status)
+// 更新媒体下载状态
+void LocalMomentController::updateMediaDownloadStatus(qint64 momentId, bool isVideo,
+                                                      const QString& mediaUrl,
+                                                      const QString& localPath, int status)
 {
-    if (!m_localMomentTable) {
-        emit mediaDownloadStatusUpdated(false, "Database not ready");
-        return;
-    }
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher]() {
+                emit mediaDownloadStatusUpdated(watcher->result());
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, "updateMediaStatus");
-
-    QMetaObject::invokeMethod(m_localMomentTable, "updateMediaDownloadStatus",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, momentId),
-                              Q_ARG(bool, isVideo),
-                              Q_ARG(const QString&, mediaUrl),
-                              Q_ARG(const QString&, localPath),
-                              Q_ARG(int, status));
+    QFuture<bool> future = QtConcurrent::run([this, momentId, isVideo, mediaUrl, localPath, status]() -> bool {
+        Orm orm;
+        auto opt = orm.findById<LocalMomentDb>(momentId);
+        if (!opt) return false;
+        LocalMomentDb db = *opt;
+        if (isVideo) {
+            db.setvideo_local_path(localPath);
+            db.setvideo_download_status(status);
+        } else {
+            // 更新图片
+            LocalMoment moment = fromDbToModel(db);
+            for (auto& img : moment.images) {
+                if (img.url == mediaUrl) {
+                    img.localPath = localPath;
+                    img.downloadStatus = status;
+                    break;
+                }
+            }
+            db.setimages_info(moment.imagesToJson());
+        }
+        return orm.update(db);
+    });
+    watcher->setFuture(future);
 }
 
+// 清理过期朋友圈
 void LocalMomentController::clearExpiredMoments()
 {
-    if (!m_localMomentTable) return;
+    QFutureWatcher<int>* watcher = new QFutureWatcher<int>(this);
+    connect(watcher, &QFutureWatcher<int>::finished, this,
+            [this, watcher]() {
+                int count = watcher->result();
+                emit expiredMomentsCleared(count);
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    m_pendingOperations.insert(reqId, "clearExpiredMoments");
-
-    QMetaObject::invokeMethod(m_localMomentTable, "clearExpiredMoments",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId));
-}
-
-// ------------------------------ 槽函数 ------------------------------
-void LocalMomentController::onMomentSaved(int reqId, bool ok, const QString& reason)
-{
-    // 从待处理操作中取出标识，若不存在直接返回（避免空操作）
-    if (!m_pendingOperations.contains(reqId)) {
-        qWarning() << "onMomentSaved: reqId" << reqId << "not found in pendingOperations";
-        return;
-    }
-    QString operation = m_pendingOperations.take(reqId);
-
-    if (operation == "publishMoment") {
-        emit momentPublished(ok, reason);
-        if (ok) {
-            loadRecentMoments(); // 发布成功后刷新列表
+    QFuture<int> future = QtConcurrent::run([]() -> int {
+        Orm orm;
+        qint64 now = QDateTime::currentSecsSinceEpoch();
+        auto expired = orm.findWhere<LocalMomentDb>(
+            "expire_time < ? AND is_deleted = 0", {now});
+        int count = 0;
+        for (auto& db : expired) {
+            db.setis_deleted(1);
+            if (orm.update(db)) ++count;
         }
-    }
-    else if (operation == "updateMediaStatus") {
-        emit mediaDownloadStatusUpdated(ok, reason);
-    }
-    else if (operation.startsWith("likeMoment_")) {
-        QStringList opParts = operation.split("_");
-        if (opParts.size() < 3) {
-            qWarning() << "onMomentSaved likeMoment: invalid op key" << operation;
-            return;
-        }
-        qint64 momentId = opParts[1].toLongLong();
-        bool isLike = (opParts[2].toInt()!=0);
-        // 校验momentId有效性
-        if (momentId <= 0) {
-            qWarning() << "onMomentSaved likeMoment: invalid momentId" << momentId;
-            return;
-        }
-        emit likeStatusChanged(momentId, ok, isLike);
-        loadMomentInteract(momentId);
-
-    }
-    else if (operation.startsWith("addComment_")) {
-        QStringList opParts = operation.split("_");
-        if (opParts.size() < 2) {
-            qWarning() << "onMomentSaved addComment: invalid op key" << operation;
-            return;
-        }
-        qint64 momentId = opParts[1].toLongLong();
-        if (momentId <= 0) {
-            qWarning() << "onMomentSaved addComment: invalid momentId" << momentId;
-            return;
-        }
-        emit commentAdded(momentId, ok, reason);
-    }
-    else if (operation.startsWith("deleteComment_")) {
-        QStringList parts = operation.split("_");
-        if (parts.size() < 3) {
-            qWarning() << "onMomentSaved deleteComment: invalid op key" << operation;
-            return;
-        }
-        qint64 momentId = parts[1].toLongLong();
-        qint64 commentId = parts[2].toLongLong();
-        // 双ID有效性校验
-        if (momentId <= 0 || commentId <= 0) {
-            qWarning() << "onMomentSaved deleteComment: invalid ID (mId:" << momentId << ", cId:" << commentId << ")";
-            return;
-        }
-        emit commentDeleted(momentId, commentId, ok, reason);
-    } else {
-        // 处理未定义的操作标识，避免无响应，方便排查问题
-        qWarning() << "onMomentSaved: unknown operation type" << operation << "reqId:" << reqId;
-    }
-}
-
-void LocalMomentController::onMomentsLoaded(int reqId, const QVector<LocalMoment>& moments)
-{
-    QString operation = m_pendingOperations.take(reqId);
-    m_loading = false;
-
-    if (operation == "loadRecentMoments") {
-        m_moments = moments;
-        m_currentOffset = moments.count();
-        m_hasMore = moments.count() >= m_limit;
-
-        // 为每条朋友圈加载互动内容
-        for (int i = 0; i < m_moments.size(); i++) {
-            m_momentsIndexs[m_moments[i].momentId] = i;
-            loadMomentInteract(m_moments[i].momentId);
-        }
-
-        emit momentsLoaded(m_moments, m_momentsIndexs, m_hasMore);
-    } else if (operation == "loadMoreMoments") {
-        if (moments.isEmpty()) {
-            m_hasMore = false;
-            emit momentsLoaded(m_moments, m_momentsIndexs, false);
-            return;
-        }
-
-        int oldcount = m_moments.count();
-
-        m_moments.append(moments);
-        m_currentOffset += moments.count();
-
-        // 为新加载的朋友圈加载互动内容
-        for (int i = 0; i < moments.size(); i++) {
-            m_momentsIndexs[moments[i].momentId] = oldcount + i;
-            loadMomentInteract(moments[i].momentId);
-        }
-
-        emit momentsLoaded(m_moments, m_momentsIndexs, m_hasMore);
-    }
-}
-
-void LocalMomentController::onMomentInteractLoaded(int reqId, const LocalMomentInteract& interact)
-{
-    QString operation = m_pendingOperations.take(reqId);
-    if (operation.startsWith("loadInteract_")) {
-        // 找到对应的朋友圈并更新互动内容
-        int index = m_momentsIndexs[interact.momentId];
-        m_moments[index].interact = interact;
-        emit momentUpdated(m_moments[index]);
-    }
-    else if(operation.startsWith("likeMoment_")) {
-        // 处理点赞逻辑
-        LocalMomentInteract newInteract = interact;
-
-        // 不管点赞还是取消，都要先清理
-        for (int i = 0; i < newInteract.likes.size(); ++i) {
-            if (newInteract.likes[i].userId == m_currentUser.userId) {
-                newInteract.likes.remove(i); // 取消点赞
-                break;
-            }
-        }
-
-        // 新增点赞
-        QStringList opParts = operation.split("_");
-        bool isLike = (opParts[2].toInt()!=0);
-        if (isLike) {
-            MomentLikeInfo like;
-            like.userId = m_currentUser.userId;
-            like.username = m_currentUser.nickname;
-            like.avatarLocalPath = m_currentUser.avatarLocalPath;
-            newInteract.likes.append(like);
-
-        }
-
-        // 保存更新后的互动数据
-        int saveReqId = generateReqId();
-        m_pendingOperations.insert(saveReqId, operation);
-        QMetaObject::invokeMethod(m_localMomentTable, "saveMomentInteract",
-                                  Qt::QueuedConnection,
-                                  Q_ARG(int, saveReqId),
-                                  Q_ARG(const LocalMomentInteract&, newInteract));
-
-    } else if (operation.startsWith("addComment_")) {
-        // 解析momentId并校验格式
-        QStringList opParts = operation.split("_");
-        if (opParts.size() < 2) {
-            qWarning() << "addComment failed: invalid operation key" << operation;
-            return;
-        }
-        qint64 momentId = opParts[1].toLongLong();
-        if (momentId <= 0) {
-            qWarning() << "addComment failed: invalid momentId" << momentId;
-            return;
-        }
-
-        // 从缓存中取出**完整的评论数据**，
-        if (!m_pendingAddComments.contains(momentId)) {
-            qWarning() << "addComment failed: no pending comment for momentId" << momentId;
-            emit commentAdded(momentId, false, "Comment data lost (no cache)");
-            return;
-        }
-        MomentCommentInfo newComment = m_pendingAddComments.take(momentId);
-
-        LocalMomentInteract newInteract = interact;
-        newInteract.momentId = momentId; // 绑定momentId
-        if (newInteract.momentId <= 0) {
-            qWarning() << "addComment failed: invalid momentId" << momentId;
-            return;
-        }
-
-        // 防重复评论
-        bool isCommentExisted = false;
-        for (const auto& c : std::as_const(newInteract.comments)) {
-            if (c.commentId == newComment.commentId) {
-                isCommentExisted = true;
-                break;
-            }
-        }
-        if (isCommentExisted) {
-            qInfo() << "comment" << newComment.commentId << "already exists for moment" << momentId;
-            emit commentAdded(momentId, false, "Duplicate comment");
-            return;
-        }
-
-        // 追加**缓存的完整评论**到互动列表
-        newInteract.comments.append(newComment);
-
-        // 保存修改后的互动数据
-        int saveReqId = generateReqId();
-        m_pendingOperations.insert(saveReqId, operation);
-        QMetaObject::invokeMethod(m_localMomentTable, "saveMomentInteract",
-                                  Qt::QueuedConnection,
-                                  Q_ARG(int, saveReqId),
-                                  Q_ARG(const LocalMomentInteract&, newInteract));
-    }else if (operation.startsWith("deleteComment_")) {
-        QStringList opParts = operation.split("_");
-        if (opParts.size() < 3) {
-            qWarning() << "deleteComment failed: invalid operation key" << operation;
-            return;
-        }
-        qint64 momentId = opParts[1].toLongLong();
-        qint64 commentId = opParts[2].toLongLong();
-        // ID有效性校验
-        if (momentId <= 0 || commentId <= 0) {
-            qWarning() << "deleteComment failed: invalid ID (momentId:" << momentId << ", commentId:" << commentId << ")";
-            return;
-        }
-
-        LocalMomentInteract newInteract = interact;
-        newInteract.momentId = momentId;
-
-        // 查找并删除指定commentId的评论
-        int commentIndex = -1;
-        for (int i = 0; i < newInteract.comments.size(); ++i) {
-            if (newInteract.comments[i].commentId == commentId) {
-                commentIndex = i;
-                break;
-            }
-        }
-        // 未找到评论，直接返回
-        if (commentIndex == -1) {
-            qWarning() << "deleteComment failed: commentId" << commentId << "not found";
-            return;
-        }
-        newInteract.comments.removeAt(commentIndex);
-
-        // 保存删除后的互动数据
-        int saveReqId = generateReqId();
-        m_pendingOperations.insert(saveReqId, operation);
-        QMetaObject::invokeMethod(m_localMomentTable, "saveMomentInteract",
-                                  Qt::QueuedConnection,
-                                  Q_ARG(int, saveReqId),
-                                  Q_ARG(const LocalMomentInteract&, newInteract));
-    }
-}
-
-void LocalMomentController::onExpiredMomentsCleared(int reqId, int count, const QString& reason)
-{
-    m_pendingOperations.take(reqId);
-    emit expiredMomentsCleared(count, reason);
-    if (count > 0) {
-        loadRecentMoments(); // 清理后刷新列表
-    }
-}
-
-void LocalMomentController::onDbError(int reqId, const QString& error)
-{
-    qWarning() << "LocalMomentController DB error (reqId:" << reqId << "):" << error;
-    m_pendingOperations.take(reqId);
-    emit dbError(reqId, error);
+        return count;
+    });
+    watcher->setFuture(future);
 }

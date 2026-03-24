@@ -47,7 +47,7 @@ void AddFriendDialog::on_searchButton_clicked()
     QString num = ui->searchLineEdit->text();
     ui->searchLineEdit->clear();
     if(!num.isEmpty()){
-        user.account = num;
+        user.setaccount(num);
     }
 
     strangerWidget->updateUser(user);

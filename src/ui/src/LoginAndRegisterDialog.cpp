@@ -34,6 +34,8 @@ LoginAndRegisterDialog::LoginAndRegisterDialog(LoginManager *loginManager, QWidg
     connect(m_loginManager, &LoginManager::loginSuccess, this, &LoginAndRegisterDialog::onLoginSuccess);
     connect(m_loginManager, &LoginManager::loginFailed, this, &LoginAndRegisterDialog::onLoginFailed);
     connect(m_loginManager, &LoginManager::networkError, this, &LoginAndRegisterDialog::onNetworkError);
+    connect(m_loginManager, &LoginManager::registerSuccess, this, &LoginAndRegisterDialog::onRegisterSuccess);
+    connect(m_loginManager, &LoginManager::registerFailed, this, &LoginAndRegisterDialog::onRegisterFailed);
 }
 
 LoginAndRegisterDialog::~LoginAndRegisterDialog()
@@ -145,12 +147,34 @@ void LoginAndRegisterDialog::on_switchWechatNumBnt_clicked()
 }
 
 
-
 void LoginAndRegisterDialog::on_phoneRegisterBnt_clicked()
 {
-    QString account = ui->phoneLineEdit->text();
+    QString phone = ui->phoneLineEdit->text();
     QString password = ui->phPasswordLineEdit->text();
+
+    if (phone.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入手机号和密码");
+        return;
+    }
+
+    // 调用注册（手机号方式）
+    m_loginManager->registerUserByPhone(phone, password);
 }
+
+
+void LoginAndRegisterDialog::on_actRegisterBnt_clicked()
+{
+    QString username = ui->accountLineEdit->text();
+    QString password = ui->actPasswordLineEdit->text();
+
+    if (username.isEmpty() || password.isEmpty()) {
+        QMessageBox::warning(this, "提示", "请输入用户名和密码");
+        return;
+    }
+
+    m_loginManager->registerUser(username, password);
+}
+
 
 void LoginAndRegisterDialog::on_phoneLoginBnt_clicked()
 {
@@ -159,11 +183,6 @@ void LoginAndRegisterDialog::on_phoneLoginBnt_clicked()
     login(account, password);
 }
 
-void LoginAndRegisterDialog::on_actRegisterBnt_clicked()
-{
-    QString account = ui->accountLineEdit->text();
-    QString password = ui->actPasswordLineEdit->text();
-}
 
 void LoginAndRegisterDialog::on_actLoginBnt_clicked()
 {
@@ -207,7 +226,15 @@ void LoginAndRegisterDialog::onNetworkError(const QString &error)
 }
 
 
+void LoginAndRegisterDialog::onRegisterSuccess(qint64 userId)
+{
+    QMessageBox::information(this, "注册成功", QString("注册成功！用户ID：%1").arg(userId));
+}
 
+void LoginAndRegisterDialog::onRegisterFailed(const QString &reason)
+{
+    QMessageBox::critical(this, "注册失败", reason);
+}
 
 
 

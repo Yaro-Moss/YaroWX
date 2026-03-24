@@ -37,15 +37,42 @@ MomentMainWidget::MomentMainWidget(LocalMomentController* controller, QWidget *p
     initializeMenu(); // 初始化右键菜单
     ui->addMomentButton->installEventFilter(this);    // 给addMomentButton安装事件过滤器
 
-    // 初始加载朋友圈动态
-    m_localMomentController->loadRecentMoments(5);
     connect(m_localMomentController, &LocalMomentController::momentsLoaded, this,
-    [this](const QVector<LocalMoment>& moments, QHash<qint64,int> momentsIndexs,bool hasMore){
-        m_moments = moments;
-        m_momentsIndexs = momentsIndexs;
-        m_hasMore = hasMore;
-        showMoments();
+        [this](const QVector<LocalMoment>& moments, bool hasMore) {
+            int newCount = moments.size();
+            bool isAppend = (newCount > m_oldMomentCount);
+
+            if (isAppend) {
+                // 只添加新增的部分（最后 newCount - m_oldMomentCount 条）
+                int startIndex = m_oldMomentCount;
+                for (int i = startIndex; i < newCount; ++i) {
+                    const LocalMoment& moment = moments[i];                        m_moments.append(moment);
+                    m_momentsIndexs[moment.momentId] = i;   // 添加索引
+
+                    MomentItemWidget* widget = createMomentItemWidget(moment);
+                    m_momentListLayout->addWidget(widget);
+                    momentItemWidgets.append(widget);
+                }
+                m_hasMore = hasMore;
+            } else {
+                // 全量重建（如初始加载、刷新）
+                m_moments = moments;
+                m_momentsIndexs.clear();
+                for (int i = 0; i < moments.size(); ++i) {
+                    m_momentsIndexs[moments[i].momentId] = i;
+                }
+                m_hasMore = hasMore;
+                showMoments();  // 全量刷新
+            }
+            m_oldMomentCount = newCount;
+
+            // 加载互动内容
+            for (int i = 0; i < m_moments.size(); ++i) {
+                m_localMomentController->loadMomentInteract(m_moments[i].momentId);
+            }
+
     });
+
     connect(m_localMomentController, &LocalMomentController::momentUpdated, this,
     [this](const LocalMoment &moment){
         int index = m_momentsIndexs[moment.momentId];
@@ -58,6 +85,8 @@ MomentMainWidget::MomentMainWidget(LocalMomentController* controller, QWidget *p
     });
 
     ui->coverLabel->setRadius(0);
+    // 初始加载朋友圈动态
+    m_localMomentController->loadRecentMoments(5);
 }
 
 MomentMainWidget::~MomentMainWidget()
@@ -83,7 +112,7 @@ void MomentMainWidget::setCurrentUser(const Contact &currentUser)
 {
     m_currentUser = currentUser;
     ui->avatarPushButton->setContact(m_currentUser);
-    ui->coverLabel->setPixmap(QPixmap(m_currentUser.user.profile_cover));
+    ui->coverLabel->setPixmap(QPixmap(m_currentUser.user.profile_coverValue()));
 }
 
 

@@ -79,6 +79,32 @@ QString ConfigManager::loginUrl() const
     return m_settings->value("Network/LoginUrl", "http://localhost:8080/api/v1/login").toString();
 }
 
+QString ConfigManager::registerUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/v1/register";
+    return m_settings->value("Network/RegisterUrl", "http://localhost:8080/api/v1/register").toString();
+}
+
+QString ConfigManager::getAllFriendUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/v1/friend";
+    return m_settings->value("Network/GetAllFriendUrl", "http://localhost:8080/api/v1/friend").toString();
+}
+
+QString ConfigManager::getProfileUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/user/profile";
+    return m_settings->value("Network/GetProfileUrl", "http://localhost:8080/api/user/profile").toString();
+}
+
+QString ConfigManager::getGroupsAddMembersUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/user/groupsAddMembers";
+    return m_settings->value("Network/GetGroupsAddMembersUrl", "http://localhost:8080/api/user/groupsAddMembers").toString();
+}
+
+
+
 int ConfigManager::maxRetry() const
 {
     if (!m_settings) return 5;
@@ -87,9 +113,9 @@ int ConfigManager::maxRetry() const
 
 QString ConfigManager::dataSavePath() const
 {
-    if (!m_settings) return QDir::homePath() + "/YaroWX/data" + "/user_" + currentUserID ;
+    if (!m_settings) return QDir::homePath() + "/YaroWX/data" + "/user_" + currentLoginUserID ;
     return m_settings->value("Data/SavePath", QDir::homePath() + "/YaroWX/data").toString()
-           + "/user_"+currentUserID;
+           + "/user_"+currentLoginUserID;
 }
 
 void ConfigManager::saveConfig()
@@ -98,3 +124,4 @@ void ConfigManager::saveConfig()
         m_settings->sync(); // 确保配置保存到磁盘
     }
 }
+

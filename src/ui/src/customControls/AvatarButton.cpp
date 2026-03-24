@@ -18,7 +18,7 @@ AvatarButton::AvatarButton(QWidget *parent)
     setContentsMargins(0, 0, 0, 0);
 
     connect(this, &AvatarButton::clicked, this, [this](){
-        if(m_contact.user.isCurrent){
+        if(m_contact.user.is_currentValue()){
             CurrentUserInfoDialog *currentUserInfoDialog = new CurrentUserInfoDialog(this);
             currentUserInfoDialog->setAttribute(Qt::WA_DeleteOnClose);
             currentUserInfoDialog->setCurrentUser(m_contact);
@@ -106,16 +106,16 @@ void AvatarButton::setNameModeColor(const QColor &color)
 QString AvatarButton::getNameModeText() const
 {
     // 优先使用联系人的 remarkName
-    if (m_contact.isValid() && !m_contact.remarkName.isEmpty()) {
-        return m_contact.remarkName;
+    if (m_contact.isValid() && !m_contact.remark_nameValue().isEmpty()) {
+        return m_contact.remark_nameValue();
     }
     // 其次使用联系人昵称
-    if (m_contact.isValid() && !m_contact.user.nickname.isEmpty()) {
-        return m_contact.user.nickname;
+    if (m_contact.isValid() && !m_contact.user.nicknameValue().isEmpty()) {
+        return m_contact.user.nicknameValue();
     }
     // 再其次使用单独设置的 User 昵称
-    if (!m_user.nickname.isEmpty()) {
-        return m_user.nickname;
+    if (!m_user.nicknameValue().isEmpty()) {
+        return m_user.nicknameValue();
     }
     // 最后返回空字符串，由调用者决定显示什么（paintEvent中会用占位符）
     return QString();
@@ -156,9 +156,9 @@ void AvatarButton::paintEvent(QPaintEvent *event)
 
     // 加载头像图片
     if (m_contact.isValid()) {
-        avatarPixmap = QPixmap(m_contact.user.avatarLocalPath);
-    } else if (!m_user.avatarLocalPath.isEmpty()) {
-        avatarPixmap = QPixmap(m_user.avatarLocalPath);
+        avatarPixmap = QPixmap(m_contact.user.avatar_local_pathValue());
+    } else if (!m_user.avatar_local_pathValue().isEmpty()) {
+        avatarPixmap = QPixmap(m_user.avatar_local_pathValue());
     }
 
     // 图片加载失败则生成默认头像（圆角严格匹配m_radius）
@@ -244,11 +244,11 @@ QColor AvatarButton::generateBgColorFromNickname(const QString& nickname)
 
 QString AvatarButton::getValidNickname() const
 {
-    if (m_contact.isValid() && !m_contact.user.nickname.isEmpty()) {
-        return m_contact.user.nickname;
+    if (m_contact.isValid() && !m_contact.user.nicknameValue().isEmpty()) {
+        return m_contact.user.nicknameValue();
     }
-    if (!m_user.nickname.isEmpty()) {
-        return m_user.nickname;
+    if (!m_user.nicknameValue().isEmpty()) {
+        return m_user.nicknameValue();
     }
     return "";
 }

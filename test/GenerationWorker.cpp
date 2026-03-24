@@ -1,11 +1,11 @@
 #include "GenerationWorker.h"
-#include "UserTable.h"
-#include "ContactTable.h"
+#include "ORM.h"
 #include <QDebug>
 #include <QDateTime>
 #include <QRandomGenerator>
 #include <QStringList>
 #include <QCoreApplication>
+#include <qfuture.h>
 
 
 // 常量定义
@@ -64,8 +64,6 @@ GenerationWorker::GenerationWorker(QObject *parent)
 
 GenerationWorker::~GenerationWorker()
 {
-    delete m_userTable;
-    delete m_contactTable;
 }
 
 void GenerationWorker::sendMsg(QVector<Message> messages){
@@ -78,12 +76,12 @@ void GenerationWorker::sendMsg(QVector<Message> messages){
     QString content = doubao->DoubaoAI_request(reqTxt);
 
     Message msg = messages[0];
-    msg.content = content;
-    msg.type = MessageType::TEXT;
-    msg.timestamp = QDateTime::currentSecsSinceEpoch()+2;//回复的消息，比我发的消息慢2秒。
-    qint64 tempId = std::move(msg.senderId);
-    msg.senderId = std::move(msg.consigneeId);
-    msg.consigneeId = std::move(tempId);
+    msg.setcontent(content);
+    msg.settype(static_cast<int>(MessageType::TEXT));
+    msg.setmsg_time(QDateTime::currentSecsSinceEpoch()+2);//回复的消息，比我发的消息慢2秒。
+    qint64 tempId = std::move(msg.sender_idValue());
+    msg.setsender_id(std::move(msg.consignee_id()));
+    msg.setconsignee_id(std::move(tempId));
 
     emit reaction(msg);
 }
@@ -100,15 +98,15 @@ QString GenerationWorker::buildPrompt(const QVector<Message> &messages)
     for (auto it = messages.rbegin(); it != messages.rend(); ++it) {
         const Message& msg = *it;
 
-        QString userinfo = QString("用户%1 ：").arg(msg.senderId);
+        QString userinfo = QString("用户%1 ：").arg(msg.sender_idValue());
         prompt+=userinfo;
 
-        if (msg.type == MessageType::TEXT) {
-            prompt += msg.content;
+        if (msg.type() == static_cast<int>(MessageType::TEXT)) {
+            prompt += msg.contentValue();
             prompt+=" 。";
         } else {
             prompt += "{";
-            prompt += msg.content;
+            prompt += msg.contentValue();
             prompt += "}";
         }
     }
@@ -125,75 +123,32 @@ User GenerationWorker::generateAndSaveCurrentUser()
     // 使用时间戳生成唯一ID和账号
     qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
 
-    currentUser.userId = timestamp;
-    currentUser.account = QString("user_%1").arg(timestamp);
-    currentUser.nickname = QString("用户%1").arg(timestamp % 10000);
-    currentUser.avatar = "";
-    currentUser.avatarLocalPath = "D:wallpaper/image_1.png";
-    currentUser.gender = 0;
-    currentUser.region = "中国";
-    currentUser.signature = "欢迎使用本系统";
-    currentUser.isCurrent = true;
+    currentUser.setuser_id(timestamp);
+    currentUser.setaccount(QString("user_%1").arg(timestamp));
+    currentUser.setnickname(QString("用户%1").arg(timestamp % 10000));
+    currentUser.setavatar("");
+    currentUser.setavatar_local_path("D:wallpaper/image_1.png");
+    currentUser.setgender(0);
+    currentUser.setregion("中国");
+    currentUser.setsignature("欢迎使用本系统");
+    currentUser.setis_current(true);
 
-    // 同步保存到数据库
-    if (m_userTable) {
-        bool saved = m_userTable->saveCurrentUser(0, currentUser);
-        if (!saved) {
-            qWarning() << "Failed to save current user";
-            return User(); // 返回空用户
-        }
-    }
+    Orm orm;
+    User copy = currentUser;
+    orm.insert(copy);
 
     Contact contact;
-    contact.userId=currentUser.userId;
+    contact.setuser_id(currentUser.user_id());
     contact.user = currentUser;
-    contact.remarkName = currentUser.nickname;
-    if(m_contactTable){
-        m_contactTable->saveContact(0,contact);
-    }
+    contact.setremark_name(currentUser.nickname());
+
+    orm.insert(contact);
 
     return currentUser;
 }
 
-bool GenerationWorker::initDatabase()
-{
-    QMutexLocker locker(&m_mutex);
-
-    if (m_initialized) {
-        return true;
-    }
-
-    try {
-        // 在 worker 线程中创建数据库操作对象
-        m_userTable = new UserTable();
-        m_contactTable = new ContactTable();
-
-        // 调用初始化方法（假设这些类有init方法）
-        bool userInit = m_userTable->init();
-        bool contactInit = m_contactTable->init();
-
-        m_initialized = userInit && contactInit;
-
-        if (!m_initialized) {
-            emit errorOccurred("数据库初始化失败");
-        }
-
-        generateAndSaveCurrentUser();
-        return m_initialized;
-    }
-    catch (const std::exception& e) {
-        emit errorOccurred(QString("数据库初始化异常: %1").arg(e.what()));
-        return false;
-    }
-}
-
 void GenerationWorker::generateNonFriends(int count)
 {
-    if (!initDatabase()) {
-        emit nonFriendsGenerated(false, "数据库初始化失败");
-        return;
-    }
-
     if (count <= 0) {
         emit nonFriendsGenerated(false, "请输入有效的用户数量");
         return;
@@ -203,15 +158,13 @@ void GenerationWorker::generateNonFriends(int count)
 
     int successCount = 0;
 
+    Orm orm;
     for (int i = 0; i < count; ++i) {
         // 生成用户
         User user = generateSingleUser();
-
-        // 保存到数据库
-        m_userTable->saveUser(0, user);
-
+        orm.insert(user);
         // 发射进度信号
-        emit progressChanged(i + 1, count, QString("正在生成用户: %1").arg(user.nickname), 0);
+        emit progressChanged(i + 1, count, QString("正在生成用户: %1").arg(user.nicknameValue()), 0);
 
         // 让出CPU，避免长时间占用
         if (i % 10 == 0) {
@@ -229,11 +182,6 @@ void GenerationWorker::generateNonFriends(int count)
 
 void GenerationWorker::generateFriends(int count)
 {
-    if (!initDatabase()) {
-        emit friendsGenerated(false, "数据库初始化失败");
-        return;
-    }
-
     if (count <= 0) {
         emit friendsGenerated(false, "请输入有效的好友数量");
         return;
@@ -243,21 +191,18 @@ void GenerationWorker::generateFriends(int count)
 
     int successCount = 0;
 
+    Orm orm;
     for (int i = 0; i < count; ++i) {
         // 生成用户
         User user = generateSingleUser();
-
-        // 保存用户到数据库
-        m_userTable->saveUser(0, user);
+        orm.insert(user);
 
         // 生成联系人
         Contact contact = generateContactForUser(user);
-
-        // 保存联系人到数据库
-        m_contactTable->saveContact(0, contact);
+        orm.insert(contact);
 
         // 发射进度信号
-        emit progressChanged(i + 1, count, QString("正在生成好友: %1").arg(user.nickname), 1);
+        emit progressChanged(i + 1, count, QString("正在生成好友: %1").arg(user.nicknameValue()), 1);
 
         // 让出CPU
         if (i % 10 == 0) {
@@ -284,31 +229,31 @@ User GenerationWorker::generateSingleUser()
     qint64 timestamp = now.toMSecsSinceEpoch();
 
     // 生成用户ID：时间戳 + 计数器
-    user.userId = timestamp + counter.fetch_add(1);
+    user.setuser_id(timestamp + counter.fetch_add(1));
 
     // 生成账号
-    user.account = QString("user_%1").arg(now.toSecsSinceEpoch() + counter.load());
+    user.setaccount(QString("user_%1").arg(now.toSecsSinceEpoch() + counter.load()));
 
     // 生成昵称
-    user.nickname = generateRandomNickname();
+    user.setnickname(generateRandomNickname());
 
     // 生成头像URL
-    user.avatar = generateRandomAvatar();
+    user.setavatar(generateRandomAvatar());
 
     // 生成本地头像路径
-    user.avatarLocalPath = QString("/avatars/%1.jpg").arg(user.userId);
+    user.setavatar_local_path(QString("/avatars/%1.jpg").arg(user.user_idValue()));
 
     // 生成性别
-    user.gender = generateRandomGender();
+    user.setgender(generateRandomGender());
 
     // 生成地区
-    user.region = generateRandomRegion();
+    user.setregion(generateRandomRegion());
 
     // 生成个性签名
-    user.signature = generateRandomSignature();
+    user.setsignature(generateRandomSignature());
 
     // 设置是否为当前用户
-    user.isCurrent = false;
+    user.setis_current(false);
 
     return user;
 }
@@ -317,16 +262,16 @@ Contact GenerationWorker::generateContactForUser(const User& user)
 {
     Contact contact;
 
-    contact.userId = user.userId;
-    contact.remarkName = generateRandomRemarkName(user.nickname);
-    contact.description = generateRandomDescription();
-    contact.tags = generateRandomTags();
-    contact.phoneNote = generateRandomPhoneNote();
-    contact.emailNote = generateRandomEmailNote();
-    contact.source = generateRandomSource();
-    contact.isStarred = QRandomGenerator::global()->bounded(100) < 10;
-    contact.isBlocked = false;
-    contact.addTime = QDateTime::currentSecsSinceEpoch();
+    contact.setuser_id(user.user_id());
+    contact.setremark_name(generateRandomRemarkName(user.nicknameValue()));
+    contact.setdescription(generateRandomDescription());
+    contact.settags(generateRandomTags()) ;
+    contact.setphone_note(generateRandomPhoneNote());
+    contact.setemail_note(generateRandomEmailNote());;
+    contact.setsource(generateRandomSource());
+    contact.setis_blocked(QRandomGenerator::global()->bounded(100) < 10);
+    contact.setis_blocked(false);
+    contact.setadd_time(QDateTime::currentSecsSinceEpoch());
     contact.user = user;
 
     return contact;
@@ -406,21 +351,24 @@ QString GenerationWorker::generateRandomDescription()
     return descriptions.at(generator->bounded(descriptions.size()));
 }
 
-QJsonArray GenerationWorker::generateRandomTags()
+QString GenerationWorker::generateRandomTags()
 {
     QRandomGenerator *generator = QRandomGenerator::global();
-    QJsonArray tags;
+    QJsonArray tagsArray;
+    int targetTagCount = generator->bounded(4) + 1;
 
-    int tagCount = generator->bounded(4);
-
-    for (int i = 0; i < tagCount; ++i) {
+    while (tagsArray.size() < targetTagCount) {
         QString tag = TAG_LIST.at(generator->bounded(TAG_LIST.size()));
-        if (!tags.contains(tag)) {
-            tags.append(tag);
+        bool isExist = false;
+        for (const QJsonValue &v : tagsArray) {
+            if (v.toString() == tag) { isExist = true; break; }
         }
+        if (!isExist) { tagsArray.append(tag); }
     }
 
-    return tags;
+    // 纯数组转 JSON 字符串
+    QJsonDocument doc(tagsArray);
+    return doc.toJson(QJsonDocument::Compact);
 }
 
 QString GenerationWorker::generateRandomPhoneNote()

@@ -226,7 +226,7 @@ void MomentItemWidget::setLocalMoment(const LocalMoment &localMoment)
             }
             m_likeFlowLayout->addWidget(likeAvatarButton);
 
-            if(like.userId == m_localMomentController->currentUserId()){
+            if(like.userId == m_localMomentController->currentLoginUserId()){
                 likeBtn->setText("取消");
                 break;
             }
@@ -278,16 +278,16 @@ void MomentItemWidget::onLikeActionTriggered()
         return;
     }
     QVector<MomentLikeInfo> likes = m_localMoment.interact.likes;
+    // 获取旧的点赞状态
     bool isLike = false;
     for(const MomentLikeInfo &like: likes){
-        if(like.userId == m_localMomentController->currentUserId()){
+        if(like.userId == m_localMomentController->currentLoginUserId()){
             isLike =true;
-            likeBtn->setText("点赞");
             break;
         }
     }
+    // 修改点赞状态
     m_localMomentController->likeMoment(m_localMoment.momentId, !isLike);
-    likeBtn->setText("取消");
     m_interactMenu->hide();
 }
 
@@ -304,10 +304,10 @@ void MomentItemWidget::onCommentSent(const QString& commentText, const QString& 
     MomentCommentInfo momentCommentInfo;
     momentCommentInfo.commentId = QDateTime::currentMSecsSinceEpoch();
     momentCommentInfo.createTime = QDateTime::currentSecsSinceEpoch();
-    momentCommentInfo.avatarLocalPath = m_currentUser.user.avatarLocalPath;
+    momentCommentInfo.avatarLocalPath = m_currentUser.user.avatar_local_pathValue();
     momentCommentInfo.replyUserId = m_localMoment.userId;
-    momentCommentInfo.userId = m_currentUser.userId;
-    momentCommentInfo.username = m_currentUser.remarkName;
+    momentCommentInfo.userId = m_currentUser.user_idValue();
+    momentCommentInfo.username = m_currentUser.remark_nameValue();
     momentCommentInfo.content = commentText;
     momentCommentInfo.image.localPath = img;
 

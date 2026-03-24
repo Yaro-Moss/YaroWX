@@ -3,7 +3,6 @@
 #include "LoginManager.h"
 #include "WeChatWidget.h"
 #include <QApplication>
-#include "DatabaseManager.h"
 #include "AppController.h"
 #include "GroupMember.h"
 #include "Group.h"
@@ -61,24 +60,21 @@ int main(int argc, char *argv[])
     LoginManager *loginManager = new LoginManager();
     LoginAndRegisterDialog loginAndRegisterDialog(loginManager);
     if(loginAndRegisterDialog.exec() == QDialog::Accepted){
-        qDebug()<<"登录成功-----";
+        qDebug()<<"登录成功";
     }else {
         return app.exec();
     }
 
-    DatabaseInitializationController* initController = new DatabaseInitializationController();
+    DatabaseInitializationController* initController = new DatabaseInitializationController(loginManager);
     AppInitialize* appInit = new AppInitialize(initController);
 
-    DatabaseManager* databaseManager = nullptr;
     AppController* appController = nullptr;
     WeChatWidget* wechatWidget = nullptr;
 
     TestWidget *testWidget;//测试
 
     QObject::connect(appInit, &AppInitialize::isInited, &app, [&](){
-        databaseManager = new DatabaseManager();
-        databaseManager->start();
-        appController = new AppController(databaseManager);
+        appController = new AppController();
 
         // 测试----------------------------------------
         testWidget = new TestWidget(appController);
@@ -100,10 +96,10 @@ int main(int argc, char *argv[])
     int result = app.exec();
     delete wechatWidget;
     delete appController;
-    delete databaseManager;
     delete appInit;
     delete initController;
     delete testWidget;
+    delete loginManager;
 
     // 显式清理ThumbnailResourceManager,防止QGuiApplication 销毁后还在处理 QPixmap，造成崩溃
     ThumbnailResourceManager::cleanup();

@@ -111,7 +111,7 @@ void ContactTreeView::contextMenuEvent(QContextMenuEvent *event)
     Contact contact = getSelectedContact();
     if (contact.isValid()) {
 
-        starFriendAction->setText(contact.isStarred ? "取消星标朋友" : "标为星标朋友");
+        starFriendAction->setText(contact.is_starredValue() ? "取消星标朋友" : "标为星标朋友");
         contactMenu->exec(event->globalPos());
     }
 }

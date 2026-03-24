@@ -5,17 +5,16 @@
 #include <QHash>
 #include <QList>
 #include <QVector>
+#include "Contact.h"
 #include "Message.h"
 
 class ChatMessagesModel : public QAbstractListModel
 {
     Q_OBJECT
-    Q_PROPERTY(qint64 currentUserId READ currentUserId WRITE setCurrentUserId NOTIFY currentUserIdChanged)
     Q_PROPERTY(qint64 conversationId READ conversationId WRITE setConversationId NOTIFY conversationIdChanged)
 
 public:
     explicit ChatMessagesModel(QObject *parent = nullptr);
-    explicit ChatMessagesModel(int currentUserId, QObject *parent = nullptr);
 
     enum MessageRoles {
         MessageIdRole = Qt::UserRole + 1,
@@ -53,11 +52,9 @@ public:
 
     // 消息管理
     void addMessage(const Message &message);
-    void insertMessage(int row, const Message &message);
     void removeMessage(int row);
     void removeMessageById(qint64 messageId);
     void updateMessage(const Message &message);
-    void addMessages(const QVector<Message> &messages);
     void clearAll();
 
     // 查询方法
@@ -70,8 +67,7 @@ public:
     Q_INVOKABLE QVector<Message> getRecentMessages(int count = 9) const;
 
     // 属性
-    void setCurrentUserId(qint64 userId);
-    qint64 currentUserId() const;
+    void setCurrentLoginUser(const Contact &user);
     void setConversationId(qint64 conversationId);
     qint64 conversationId() const;
 
@@ -80,10 +76,17 @@ signals:
     void conversationIdChanged();
 
 private:
+    static bool lessThan(const Message &a, const Message &b) {
+        // 按消息时间升序（旧的在前，新的在后）
+        return a.msg_timeValue() < b.msg_timeValue();
+    }
+
+    int findInsertPosition(const Message &message) const;
+
     QHash<qint64, Message> m_messages;       // 消息数据缓存（通过 messageId 快速访问）
     QList<qint64> m_messageIds;               // 按显示顺序存储的消息ID列表
-    qint64 m_currentUserId = 0;
     qint64 m_currentConversationId = 0;
+    Contact m_currentLoginUser;
 };
 
 #endif // CHATMESSAGESMODEL_H

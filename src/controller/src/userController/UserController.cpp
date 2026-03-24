@@ -1,273 +1,307 @@
 #include "UserController.h"
+#include "ORM.h"
+#include <QtConcurrent/QtConcurrent>
+#include <QFutureWatcher>
 #include <QDebug>
-#include <QDir>
-#include <QFileInfo>
-#include <QDateTime>
-#include "UserTable.h"
 
-UserController::UserController(DatabaseManager* dbManager, QObject* parent)
+UserController::UserController(QObject* parent)
     : QObject(parent)
-    , m_dbManager(dbManager)
-    , m_userTable(nullptr)
-    , m_reqIdCounter(0)
 {
-    if (m_dbManager) {
-        m_userTable = m_dbManager->userTable();
-        connectSignals();
-
-        // 异步获取当前用户
-        getCurrentUser();
-    } else {
-        qWarning() << "DatabaseManager is null in UserController constructor";
-    }
 }
 
 UserController::~UserController()
-{}
-
-int UserController::generateReqId()
-{
-    return m_reqIdCounter.fetchAndAddAcquire(1);
-}
-
-void UserController::connectSignals()
-{
-    if (!m_userTable) {
-        qWarning() << "UserTable is null, cannot connect signals";
-        return;
-    }
-
-    // 连接UserTable信号
-    connect(m_userTable, &UserTable::currentUserSaved, this, &UserController::onCurrentUserSaved);
-    connect(m_userTable, &UserTable::currentUserLoaded, this, &UserController::onCurrentUserLoaded);
-    connect(m_userTable, &UserTable::userSaved, this, &UserController::onUserSaved);
-    connect(m_userTable, &UserTable::userDeleted, this, &UserController::onUserDeleted);
-    connect(m_userTable, &UserTable::userLoaded, this, &UserController::onUserLoaded);
-    connect(m_userTable, &UserTable::allUsersLoaded, this, &UserController::onAllUsersLoaded);
-    connect(m_userTable, &UserTable::dbError, this, &UserController::onDbError);
-}
-
-void UserController::getCurrentUser()
-{
-    if (!m_userTable) {
-        emit currentUserLoaded(-1, User());
-        return;
-    }
-
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "getCurrentUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId));
-}
-
-
-void UserController::updateCurrentUser(const User& user)
-{
-    if (!m_userTable) {
-        emit currentUserUpdated(-1, false, "User table not available");
-        return;
-    }
-
-    User userToUpdate = user;
-    userToUpdate.isCurrent = true;
-
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "updateCurrentUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(User, userToUpdate));
-}
-
-void UserController::updateCurrentUserProfile(const User& profileUpdates)
 {
 }
 
-void UserController::clearCurrentUser()
+void UserController::addUser(const User& user)
 {
-    if (!m_userTable) {
-        emit currentUserCleared(-1, false, "User table not available");
-        return;
-    }
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, user]() {
+                bool success = watcher->result();
+                if (success) {
+                    emit userSaved(user.user_idValue(), true);
+                    // 如果添加的用户正好是当前登录用户，更新内存中的用户信息
+                    if (m_currentLoginUser.isValid() &&
+                        m_currentLoginUser.user_id() == user.user_id()) {
+                        m_currentLoginUser.user = user;
+                        emit currentUserUpdated();
+                    }
+                } else {
+                    emit userSaved(user.user_idValue(), false, "Database error");
+                }
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "clearCurrentUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId));
-}
-
-void UserController::saveUser(const User& user)
-{
-    if (!m_userTable) {
-        emit userSaved(-1, false, "User table not available");
-        return;
-    }
-
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "saveUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(User, user));
+    QFuture<bool> future = QtConcurrent::run([user]() -> bool {
+        Orm orm;
+        User copy = user;
+        return orm.insert(copy);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateUser(const User& user)
 {
-    if (!m_userTable) {
-        emit userUpdated(-1, false, "User table not available");
-        return;
-    }
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, user]() {
+                bool success = watcher->result();
+                if (success) {
+                    emit userUpdated(user.user_idValue());
+                    // 如果是当前登录用户，更新内存中的信息
+                    if (m_currentLoginUser.isValid() &&
+                        m_currentLoginUser.user_id() == user.user_id()) {
+                        m_currentLoginUser.user = user;
+                        emit currentUserUpdated();
+                    }
+                } else {
+                    qWarning() << "Update user failed:" << user.user_id();
+                }
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "updateUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(User, user));
+    QFuture<bool> future = QtConcurrent::run([user]() -> bool {
+        Orm orm;
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::deleteUser(qint64 userId)
 {
-    if (!m_userTable) {
-        emit userDeleted(-1, false, "User table not available");
-        return;
-    }
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId]() {
+                bool success = watcher->result();
+                if (success) {
+                    emit userDeleted(userId);
+                    // 如果删除的是当前登录用户，清空当前用户
+                    if (m_currentLoginUser.isValid() &&
+                        m_currentLoginUser.user_id() == userId) {
+                        m_currentLoginUser = Contact();
+                        emit currentUserUpdated();
+                    }
+                } else {
+                    qWarning() << "Delete user failed:" << userId;
+                }
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "deleteUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, userId));
+    QFuture<bool> future = QtConcurrent::run([userId]() -> bool {
+        Orm orm;
+        User dummy;
+        dummy.setuser_id(userId);
+        return orm.remove(dummy);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::getUser(qint64 userId)
 {
-    if (!m_userTable) {
-        emit userLoaded(-1, User());
-        return;
-    }
+    QFutureWatcher<User>* watcher = new QFutureWatcher<User>(this);
+    connect(watcher, &QFutureWatcher<User>::finished, this,
+            [this, watcher, userId]() {
+                User user = watcher->result();
+                if (user.isValid()) {
+                    emit userLoaded(userId, user);
+                } else {
+                    qWarning() << "User not found:" << userId;
+                }
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "getUser",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId),
-                              Q_ARG(qint64, userId));
+    QFuture<User> future = QtConcurrent::run([userId]() -> User {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (userOpt) {
+            return *userOpt;
+        }
+        return User();
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::getAllUsers()
 {
-    if (!m_userTable) {
-        emit allUsersLoaded(-1, QList<User>());
-        return;
-    }
+    QFutureWatcher<QList<User>>* watcher = new QFutureWatcher<QList<User>>(this);
+    connect(watcher, &QFutureWatcher<QList<User>>::finished, this,
+            [this, watcher]() {
+                QList<User> users = watcher->result();
+                emit allUsersLoaded(users);
+                watcher->deleteLater();
+            });
 
-    int reqId = generateReqId();
-    QMetaObject::invokeMethod(m_userTable, "getAllUsers",
-                              Qt::QueuedConnection,
-                              Q_ARG(int, reqId));
+    QFuture<QList<User>> future = QtConcurrent::run([]() -> QList<User> {
+        Orm orm;
+        return orm.findAll<User>();
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateNickname(const QString& nickname)
 {
-    User updates;
-    updates.nickname = nickname;
-    updateCurrentUserProfile(updates);
+    if (!m_currentLoginUser.isValid()) {
+        qWarning() << "No current user set";
+        return;
+    }
+    qint64 userId = m_currentLoginUser.user_idValue();
+
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId, nickname]() {
+                bool success = watcher->result();
+                if (success) {
+                    m_currentLoginUser.user.setnickname(nickname);
+                    emit currentUserUpdated();
+                    emit userUpdated(userId);
+                } else {
+                    qWarning() << "Update nickname failed for user:" << userId;
+                }
+                watcher->deleteLater();
+            });
+
+    QFuture<bool> future = QtConcurrent::run([userId, nickname]() -> bool {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (!userOpt) return false;
+        User user = *userOpt;
+        user.setnickname(nickname);
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateAvatar(const QString& avatarUrl, const QString& localPath)
 {
+    if (!m_currentLoginUser.isValid()) {
+        qWarning() << "No current user set";
+        return;
+    }
+    qint64 userId = m_currentLoginUser.user_idValue();
+
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId, avatarUrl, localPath]() {
+                bool success = watcher->result();
+                if (success) {
+                    m_currentLoginUser.user.setavatar(avatarUrl);
+                    m_currentLoginUser.user.setavatar_local_path(localPath);
+                    emit currentUserUpdated();
+                    emit userUpdated(userId);
+                } else {
+                    qWarning() << "Update avatar failed for user:" << userId;
+                }
+                watcher->deleteLater();
+            });
+
+    QFuture<bool> future = QtConcurrent::run([userId, avatarUrl, localPath]() -> bool {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (!userOpt) return false;
+        User user = *userOpt;
+        user.setavatar(avatarUrl);
+        user.setavatar_local_path(localPath);
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateSignature(const QString& signature)
 {
-    User updates;
-    updates.signature = signature;
-    updateCurrentUserProfile(updates);
+    if (!m_currentLoginUser.isValid()) {
+        qWarning() << "No current user set";
+        return;
+    }
+    qint64 userId = m_currentLoginUser.user_idValue();
+
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId, signature]() {
+                bool success = watcher->result();
+                if (success) {
+                    m_currentLoginUser.user.setsignature(signature);
+                    emit currentUserUpdated();
+                    emit userUpdated(userId);
+                } else {
+                    qWarning() << "Update signature failed for user:" << userId;
+                }
+                watcher->deleteLater();
+            });
+
+    QFuture<bool> future = QtConcurrent::run([userId, signature]() -> bool {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (!userOpt) return false;
+        User user = *userOpt;
+        user.setsignature(signature);
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateGender(int gender)
 {
-    User updates;
-    updates.gender = gender;
-    updateCurrentUserProfile(updates);
+    if (!m_currentLoginUser.isValid()) {
+        qWarning() << "No current user set";
+        return;
+    }
+    qint64 userId = m_currentLoginUser.user_idValue();
+
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId, gender]() {
+                bool success = watcher->result();
+                if (success) {
+                    m_currentLoginUser.user.setgender(gender);
+                    emit currentUserUpdated();
+                    emit userUpdated(userId);
+                } else {
+                    qWarning() << "Update gender failed for user:" << userId;
+                }
+                watcher->deleteLater();
+            });
+
+    QFuture<bool> future = QtConcurrent::run([userId, gender]() -> bool {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (!userOpt) return false;
+        User user = *userOpt;
+        user.setgender(gender);
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }
 
 void UserController::updateRegion(const QString& region)
 {
-    User updates;
-    updates.region = region;
-    updateCurrentUserProfile(updates);
-}
-
-// 数据库操作结果处理槽函数
-void UserController::onCurrentUserSaved(int reqId, bool success, const QString& error)
-{
-    emit currentUserUpdated(reqId, success, error);
-
-    if (success) {
-        emit userDataChanged();
+    if (!m_currentLoginUser.isValid()) {
+        qWarning() << "No current user set";
+        return;
     }
-}
+    qint64 userId = m_currentLoginUser.user_idValue();
 
-void UserController::onCurrentUserLoaded(int reqId, const User& user)
-{
-    if (user.isValid()) {
-        currentUser = user;
-        emit currentUserLoaded(reqId, user);
-    } else {
-        emit currentUserLoaded(reqId, User());
-    }
-}
+    QFutureWatcher<bool>* watcher = new QFutureWatcher<bool>(this);
+    connect(watcher, &QFutureWatcher<bool>::finished, this,
+            [this, watcher, userId, region]() {
+                bool success = watcher->result();
+                if (success) {
+                    m_currentLoginUser.user.setregion(region);
+                    emit currentUserUpdated();
+                    emit userUpdated(userId);
+                } else {
+                    qWarning() << "Update region failed for user:" << userId;
+                }
+                watcher->deleteLater();
+            });
 
-
-void UserController::onUserSaved(int reqId, bool success, const QString& error)
-{
-    emit userSaved(reqId, success, error);
-
-    if (success) {
-        emit userDataChanged();
-    }
-}
-
-void UserController::onUserUpdated(int reqId, bool success, const QString& error)
-{
-}
-
-void UserController::onUserDeleted(int reqId, bool success, const QString& error)
-{
-    emit userDeleted(reqId, success, error);
-
-    if (success) {
-        emit userDataChanged();
-    }
-}
-
-void UserController::onUserLoaded(int reqId, const User& user)
-{
-    emit userLoaded(reqId, user);
-}
-
-void UserController::onAllUsersLoaded(int reqId, const QList<User>& users)
-{
-    QString operation = m_pendingOperations.take(reqId);
-
-    emit allUsersLoaded(reqId, users);
-}
-
-void UserController::onDbError(int reqId, const QString& error)
-{
-    qWarning() << "Database error in request" << reqId << ":" << error;
-}
-
-User UserController::mergeUserData(const User& target, const User& source)
-{
-    User result = target;
-
-    // 只更新非空的字段
-    if (!source.account.isEmpty()) result.account = source.account;
-    if (!source.nickname.isEmpty()) result.nickname = source.nickname;
-    if (!source.avatar.isEmpty()) result.avatar = source.avatar;
-    if (!source.avatarLocalPath.isEmpty()) result.avatarLocalPath = source.avatarLocalPath;
-    if (source.gender != 0) result.gender = source.gender;
-    if (!source.region.isEmpty()) result.region = source.region;
-    if (!source.signature.isEmpty()) result.signature = source.signature;
-
-    return result;
+    QFuture<bool> future = QtConcurrent::run([userId, region]() -> bool {
+        Orm orm;
+        auto userOpt = orm.findById<User>(userId);
+        if (!userOpt) return false;
+        User user = *userOpt;
+        user.setregion(region);
+        return orm.update(user);
+    });
+    watcher->setFuture(future);
 }

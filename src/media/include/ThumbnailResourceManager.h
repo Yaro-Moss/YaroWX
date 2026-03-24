@@ -96,7 +96,13 @@ private:
     static QPixmap createDefaultExpiredThumbnail(const QSize& size, const QString& mediaType);
     static QPixmap createExpiredThumbnail(const QPixmap& baseThumbnail, const QString& mediaType, const QSize size = QSize(200,300));
 
-    QString generateCacheKey(const QString& path, const QSize& size, MediaType type, int radius, const QString& iconPath = QString()) const;
+    QString generateCacheKey(const QString& path,
+                             const QSize& size,
+                             MediaType type,
+                             int radius,
+                             const QString& iconPath = QString(),
+                             const QString &name = QString()) const;
+
     int estimateCacheCost(const QPixmap& pixmap) const noexcept ;
 
     QCache<QString, MediaCacheItem> m_cache;
