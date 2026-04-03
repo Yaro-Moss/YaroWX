@@ -25,7 +25,6 @@ public:
     void setWeChatWidget(WeChatWidget* weChatWidget){m_weChatWidget = weChatWidget;}
     void setMediaDialog(MediaDialog* mediaDialog);
 
-
 private slots:
     void on_switchMessageInterfaceToolButton_clicked();
 

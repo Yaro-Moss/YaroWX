@@ -10,17 +10,18 @@
 #include "ORM.h"
 #include "Group.h"
 #include "GroupMember.h"
+#include "network.h"
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QDateTime>
 
-DatabaseInitializationController::DatabaseInitializationController(LoginManager *loginManager, QObject *parent)
+DatabaseInitializationController::DatabaseInitializationController(Network * network, QObject *parent)
     : QObject(parent)
     , m_initializationInProgress(false)
     , m_currentProgress(0)
     , databaseInitializer(new DatabaseInitializer(this))
-    , m_networkLoader(new NetworkDataLoader(loginManager, this))
-    , m_loginManager(loginManager)
+    , m_networkLoader(network->networkDataLoader())
+    , m_loginManager(network->loginManager())
     , m_currentUserId(0)   // 初始化当前用户ID为0
 {}
 

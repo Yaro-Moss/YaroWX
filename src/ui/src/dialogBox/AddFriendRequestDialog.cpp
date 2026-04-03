@@ -88,6 +88,9 @@ void AddFriendRequestDialog::on_confirmButton_clicked()
 {
     // 1. 获取输入内容，trimmed() 去除首尾空格
     QString inputText = ui->greetingTextEdit->toPlainText().trimmed();
+    QString source = "搜索";
+    QString remark = ui->remarkNameLineEdit->text();
+    QString tags = ui->tagLineEdit->text();
 
     // 2. 判空校验：
     if (inputText.isEmpty()) {
@@ -110,5 +113,17 @@ void AddFriendRequestDialog::on_confirmButton_clicked()
     }
 
     qDebug() << "好友申请招呼内容：" << inputText;
+    QString errerMsg = "";
+    qint64 outRequestId;
+    m_contactController->sendFriendRequest(errerMsg,
+                                           to_user_id,
+                                           outRequestId,
+                                           inputText,
+                                           remark,
+                                           tags,
+                                           source);
+
+    if(!errerMsg.isEmpty())
+        QMessageBox::critical(this, "错误", errerMsg);
     this->accept();
 }

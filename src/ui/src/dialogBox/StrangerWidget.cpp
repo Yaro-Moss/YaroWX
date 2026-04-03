@@ -23,9 +23,7 @@ void StrangerWidget::on_addButton_clicked()
 
 void StrangerWidget::updateUser(const User& user){
     m_user = user;
-    QString avatar = QStringList({":/a/image/.jpg", ":/a/image/avatar.jpg", ":/a/image/fm.jpg", ":/a/image/二维码.png"}).at(QRandomGenerator::global()->bounded(4));
-
-    ui->avatarLabel->setPixmap(QPixmap(avatar));
+    ui->avatarLabel->setPixmap(QPixmap(user.avatarValue()));
     ui->nickname->setText(user.nicknameValue());
     ui->region->setText(user.regionValue());
 }

@@ -103,7 +103,18 @@ QString ConfigManager::getGroupsAddMembersUrl() const
     return m_settings->value("Network/GetGroupsAddMembersUrl", "http://localhost:8080/api/user/groupsAddMembers").toString();
 }
 
+QString ConfigManager::getSearchUserUrl()const
+{
+    if (!m_settings) return "http://localhost:8080/api/user/search";
+    return m_settings->value("Network/SearchUserUrl", "http://localhost:8080/api/user/search").toString();
 
+}
+
+QString ConfigManager::getFriendRequestUrl()const
+{
+    if (!m_settings) return "http://localhost:8080/api/friend/request";
+    return m_settings->value("Network/FriendRequestUrl", "http://192.168.107.119:8080/api/friend/request").toString();
+}
 
 int ConfigManager::maxRetry() const
 {
@@ -117,6 +128,21 @@ QString ConfigManager::dataSavePath() const
     return m_settings->value("Data/SavePath", QDir::homePath() + "/YaroWX/data").toString()
            + "/user_"+currentLoginUserID;
 }
+
+
+
+QString ConfigManager::getPendingRequestsUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/friend/request/pending";
+    return m_settings->value("Network/PendingRequestsUrl", "http://localhost:8080/api/friend/request/pending").toString();
+}
+
+QString ConfigManager::processRequestUrl() const
+{
+    if (!m_settings) return "http://localhost:8080/api/friend/request/{1}";
+    return m_settings->value("Network/processRequestUrl", "http://localhost:8080/api/friend/request/{1}").toString();
+}
+
 
 void ConfigManager::saveConfig()
 {

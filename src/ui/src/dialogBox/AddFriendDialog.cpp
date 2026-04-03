@@ -1,7 +1,6 @@
 #include "AddFriendDialog.h"
 #include "StrangerWidget.h"
 #include "ui_AddFriendDialog.h"
-#include"GenerationWorker.h"
 #include <qpainter.h>
 #include <QDebug>  // 可选，用于调试
 
@@ -19,12 +18,29 @@ AddFriendDialog::AddFriendDialog(ContactController *contactController, QWidget *
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);  // 开启鼠标追踪
-
     setAttribute(Qt::WA_DeleteOnClose);
-    connect(strangerWidget, &StrangerWidget::addFriend, this, &AddFriendDialog::addFriend);
+    ui->stackedWidget->setCurrentIndex(0);
 
-    //-------暂时测试------------
-    generationWorker = new GenerationWorker(this);
+
+    connect(strangerWidget, &StrangerWidget::addFriend, this, &AddFriendDialog::addFriend);
+    connect(m_contactController,&ContactController::searchUsered, this,
+        [this](const QVector<Contact>& Contacts){
+        if(!Contacts.isEmpty()){
+            Contact contact = m_contactController->getContactFromModel(Contacts[0].user_idValue());
+            if(contact.isValid()){
+                ui->stackedWidget->setCurrentIndex(1);
+                ui->friendWidget->setSelectedContact(contact);
+                ui->friendWidget->setWeChatWidget(m_weChatWidget);
+                ui->friendWidget->setMediaDialog(m_mediaDialog);
+                ui->friendWidget->show();
+                this->resize(346,500);
+            }else{
+                ui->stackedWidget->setCurrentIndex(0);
+                strangerWidget->updateUser(Contacts[0].user);
+                strangerWidget->show();
+            }
+        }
+    });
 }
 
 AddFriendDialog::~AddFriendDialog()
@@ -39,23 +55,18 @@ void AddFriendDialog::on_closeButton_clicked()
 
 void AddFriendDialog::on_searchButton_clicked()
 {
+    ui->stackedWidget->setCurrentIndex(0);
+    this->resize(346,474);
     strangerWidget->hide();
-
-    User user = generationWorker->generateSingleUser();
-    if(!user.isValid())qDebug()<<"生成用户失败.";
-
+    ui->friendWidget->hide();
     QString num = ui->searchLineEdit->text();
+    m_contactController->searchUser(num);
     ui->searchLineEdit->clear();
-    if(!num.isEmpty()){
-        user.setaccount(num);
-    }
-
-    strangerWidget->updateUser(user);
-    strangerWidget->show();
 }
 
-void AddFriendDialog::addFriend(){
+void AddFriendDialog::addFriend(const User& user){
     addFriendRequestDialog = new AddFriendRequestDialog(m_contactController);
+    addFriendRequestDialog->setToUserId(user.user_idValue());
     addFriendRequestDialog->show();
 }
 
@@ -70,7 +81,7 @@ void AddFriendDialog::paintEvent(QPaintEvent *event)
     painter.setBrush(QColor(248,248,248));
 
     QRect rect = QRect(1,1,width()-2,height()-2);
-    painter.drawRoundedRect(rect, 10, 10);
+    painter.drawRoundedRect(rect, 8, 8);
 }
 
 void AddFriendDialog::mousePressEvent(QMouseEvent *event)
@@ -91,6 +102,7 @@ void AddFriendDialog::mouseMoveEvent(QMouseEvent *event)
         QPoint newWindowPos = event->globalPosition().toPoint() - m_dragStartPos;
         this->move(newWindowPos);
     }
+
     QDialog::mouseMoveEvent(event);
 }
 

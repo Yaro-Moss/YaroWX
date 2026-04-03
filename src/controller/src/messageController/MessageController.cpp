@@ -73,7 +73,6 @@ void MessageController::saveMessage(const Message& msg) {
     connect(watcher, &QFutureWatcher<QPair<int, bool>>::finished, this, [this, watcher]() {
         auto result = watcher->future().result();
         emit messageSaved();
-        qDebug() << "保存完成，ID：" << result.first << " 成功：" << result.second;
         watcher->deleteLater();
     });
     auto future = QtConcurrent::run([msg]() -> QPair<int, bool> {

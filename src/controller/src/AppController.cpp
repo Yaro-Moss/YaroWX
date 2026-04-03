@@ -1,12 +1,14 @@
 #include "AppController.h"
+#include "network.h"
 
-AppController::AppController(QObject *parent)
+
+AppController::AppController(Network *network, QObject *parent)
     : QObject(parent)
 {
     m_userController = new UserController(this);
     m_conversationController = new ConversationController(this);
     m_messageController = new MessageController(this);
-    m_contactController = new ContactController(this);
+    m_contactController = new ContactController(network, this);
     m_localMomentController = new LocalMomentController(this);
 }
 

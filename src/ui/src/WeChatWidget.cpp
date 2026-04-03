@@ -728,6 +728,8 @@ void WeChatWidget::on_addToolButton_clicked()
         addDialog = new AddDialog(contactController, this);
         addDialog->setAttribute(Qt::WA_DeleteOnClose);
         addDialog->showAtPos(QCursor::pos());
+        addDialog->setMediaDialog(mediaDialog);
+        addDialog->setWeChatWidget(this);
     }
 }
 

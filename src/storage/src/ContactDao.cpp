@@ -182,13 +182,13 @@ QList<Contact> ContactDao::searchContacts(const QString& keyword)
             u.is_current
         FROM contacts c
         INNER JOIN users u ON c.user_id = u.user_id
-        WHERE u.nickname LIKE ? OR c.remark_name LIKE ? OR u.account LIKE ?
+        WHERE u.account = ?  -- 只查：账号 完全相等
         ORDER BY c.remark_name, u.nickname
     )");
-    QString pattern = "%" + keyword + "%";
-    query.addBindValue(pattern);
-    query.addBindValue(pattern);
-    query.addBindValue(pattern);
+
+    // 直接绑定关键词，不加 %！！！这是精准查询
+    query.addBindValue(keyword);
+
     if (!query.exec()) {
         qWarning() << "ContactDao::searchContacts query failed:" << query.lastError().text();
         return contacts;

@@ -4,10 +4,13 @@
 #include <QFutureWatcher>
 #include <QtConcurrent/QtConcurrent>
 #include <QDebug>
+#include "NetworkDataLoader.h"
+#include "network.h"
 
-ContactController::ContactController(QObject* parent)
+ContactController::ContactController(Network *network, QObject* parent)
     : QObject(parent)
     , m_contactTreeModel(new ContactTreeModel(this))
+    , m_networkDataLoader(network->networkDataLoader())
 {
 }
 
@@ -32,22 +35,62 @@ void ContactController::getAllContacts()
     watcher->setFuture(future);
 }
 
-void ContactController::searchContacts(const QString& keyword)
+void ContactController::searchUser(const QString& keyword)
 {
     if (keyword.trimmed().isEmpty()) {
         getAllContacts();
         return;
     }
 
-    QFutureWatcher<QList<Contact>> *watcher = new QFutureWatcher<QList<Contact>>(this);
-    connect(watcher, &QFutureWatcher<QList<Contact>>::finished, this, [this, watcher]() {
-        QList<Contact> contacts = watcher->result();
-        m_contactTreeModel->loadContacts(contacts);
-        emit contactsLoaded();
+    // 先尝试本地搜索
+    QFutureWatcher<QVector<Contact>> *watcher = new QFutureWatcher<QVector<Contact>>(this);
+    connect(watcher, &QFutureWatcher<QVector<Contact>>::finished, this, [this, watcher, keyword]() {
+        QVector<Contact> contacts = watcher->result();
+        if (!contacts.empty()) {
+            emit searchUsered(contacts);
+        } else {
+            // 本地无结果，发起网络搜索
+            QFutureWatcher<QPair<QJsonArray, QString>> *netWatcher = new QFutureWatcher<QPair<QJsonArray, QString>>(this);
+            connect(netWatcher, &QFutureWatcher<QPair<QJsonArray, QString>>::finished, this, [this, netWatcher]() {
+                auto result = netWatcher->result();
+                const QJsonArray &users = result.first;
+                const QString &error = result.second;
+
+                if (!error.isEmpty()) {
+                    qWarning() << "网络搜索失败:" << error;
+                    emit searchUsered(QVector<Contact>()); // 或发射错误信号
+                } else {
+                    QVector<Contact> netContacts;
+                    for (const QJsonValue &val : users) {
+                        QJsonObject obj = val.toObject();
+                        Contact contact;
+                        contact.setuser_id(obj["user_id"].toVariant().toLongLong());
+                        contact.setremark_name(obj["nickname"].toString());
+                        contact.user.setaccount(obj["account"].toString());
+                        contact.user.setavatar(obj["avatar"].toString());
+                        contact.user.setuser_id(obj["user_id"].toString());
+                        contact.user.setnickname(obj["nickname"].toString());
+                        contact.user.setregion(obj["region"].toString());
+                        netContacts.append(contact);
+                    }
+                    emit searchUsered(netContacts);
+                }
+                netWatcher->deleteLater();
+            });
+
+            // 在另一个线程中执行同步网络请求，避免阻塞 UI
+            QFuture<QPair<QJsonArray, QString>> future = QtConcurrent::run([this, keyword]() {
+                QJsonArray users;
+                QString error;
+                m_networkDataLoader->searchUsers(keyword, users, error);
+                return qMakePair(users, error);
+            });
+            netWatcher->setFuture(future);
+        }
         watcher->deleteLater();
     });
 
-    QFuture<QList<Contact>> future = QtConcurrent::run([keyword]() -> QList<Contact> {
+    QFuture<QVector<Contact>> future = QtConcurrent::run([keyword]() -> QVector<Contact> {
         ContactDao dao;
         return dao.searchContacts(keyword);
     });
@@ -189,3 +232,28 @@ Contact ContactController::getCurrentLoginUser()
 {
     return m_contactTreeModel->getCurrentLoginUser();
 }
+
+void ContactController::sendFriendRequest(QString &errorMessage,
+                                          qint64 to_user_id,
+                                          qint64 &outRequestId,
+                                          const QString& message,
+                                          const QString& remark,
+                                          const QString& tags,
+                                          const QString& source,
+                                          const QString& description)
+{
+    m_networkDataLoader->sendFriendRequest(to_user_id,
+                                           message,
+                                           remark,
+                                           tags,
+                                           source,
+                                           description,
+                                           outRequestId,
+                                           errorMessage);
+}
+
+
+
+
+
+

@@ -50,7 +50,6 @@ void CurrentUserInfoDialog::setPixmap(const QPixmap &pixmap)
 void CurrentUserInfoDialog::on_switchMessageInterfaceToolButton_clicked()
 {
     if(!m_weChatWidget){
-        qDebug()<<"[CurrentUserInfoDialog::on_switchMessageInterfaceToolButton_clicked]控指针 m_weChatWidget";
         return;
     }
     m_weChatWidget->on_switchtoMessageInterface(currentUser);

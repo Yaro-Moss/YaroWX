@@ -1,6 +1,5 @@
 #include "AppInitialize.h"
 #include "DatabaseInitializationController.h"
-#include "LoginManager.h"
 #include "WeChatWidget.h"
 #include <QApplication>
 #include "AppController.h"
@@ -16,6 +15,7 @@
 #include <QMessageBox>
 #include "LoginAndRegisterDialog.h"
 #include "TestWidget.h"
+#include "network.h"
 
 
 
@@ -57,15 +57,15 @@ int main(int argc, char *argv[])
     qRegisterMetaType<MomentLikeInfo>("MomentLikeInfo");
     qRegisterMetaType<MomentCommentInfo>("MomentCommentInfo");
 
-    LoginManager *loginManager = new LoginManager();
-    LoginAndRegisterDialog loginAndRegisterDialog(loginManager);
+    Network *network = new Network();
+    LoginAndRegisterDialog loginAndRegisterDialog(network->loginManager());
     if(loginAndRegisterDialog.exec() == QDialog::Accepted){
         qDebug()<<"登录成功";
     }else {
         return app.exec();
     }
 
-    DatabaseInitializationController* initController = new DatabaseInitializationController(loginManager);
+    DatabaseInitializationController* initController = new DatabaseInitializationController(network);
     AppInitialize* appInit = new AppInitialize(initController);
 
     AppController* appController = nullptr;
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
     TestWidget *testWidget;//测试
 
     QObject::connect(appInit, &AppInitialize::isInited, &app, [&](){
-        appController = new AppController();
+        appController = new AppController(network);
 
         // 测试----------------------------------------
         testWidget = new TestWidget(appController);
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     delete appInit;
     delete initController;
     delete testWidget;
-    delete loginManager;
+    delete network;
 
     // 显式清理ThumbnailResourceManager,防止QGuiApplication 销毁后还在处理 QPixmap，造成崩溃
     ThumbnailResourceManager::cleanup();

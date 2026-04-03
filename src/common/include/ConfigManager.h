@@ -31,6 +31,10 @@ public:
     QString getAllFriendUrl() const;
     QString getProfileUrl()const;
     QString getGroupsAddMembersUrl()const;
+    QString getSearchUserUrl()const;
+    QString getFriendRequestUrl()const;
+    QString getPendingRequestsUrl() const;
+    QString processRequestUrl() const;
     int maxRetry() const;
     QString dataSavePath() const;
 

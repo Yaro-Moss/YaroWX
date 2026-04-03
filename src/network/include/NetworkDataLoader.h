@@ -8,6 +8,7 @@
 #include <QJsonArray>
 
 class LoginManager; // 前向声明
+struct  FriendRequestItem;
 
 class NetworkDataLoader : public QObject
 {
@@ -24,9 +25,29 @@ public:
     // 同步加载群组列表（用户加入的群组）
     bool loadGroupsAddMembers(QJsonArray &groupsArray, QString &errorMessage);
 
+    // 搜索用户（支持分页）
+    bool searchUsers(const QString &keyword, QJsonArray &usersArray, QString &errorMessage, int page = 1, int size = 20);
+
+    // 发送好友申请
+    bool sendFriendRequest(qint64 to_user_id,
+                           const QString& message,
+                           const QString& remark,
+                           const QString& tags,
+                           const QString& source,
+                           const QString& description,
+                           qint64 &outRequestId,
+                           QString &errorMessage);
+
+    bool getPendingFriendRequests(QList<FriendRequestItem> &outList,
+                                  QString &errorMessage);
+
+    bool processFriendRequest(qint64 requestId, bool agree, QString &errorMessage);
+
 private:
     // 通用同步请求方法
     bool sendGetRequest(const QUrl &url, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs = 10000);
+
+    bool sendPostRequest(const QUrl &url, const QJsonObject &payload, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs = 10000);
 
     LoginManager *m_loginManager;
     QNetworkAccessManager m_networkManager;

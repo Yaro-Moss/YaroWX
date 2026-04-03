@@ -9,13 +9,14 @@
 class DatabaseInitializer;
 class NetworkDataLoader;
 class LoginManager;
+class Network;
 
 class DatabaseInitializationController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit DatabaseInitializationController(LoginManager *loginManager, QObject *parent = nullptr);
+    explicit DatabaseInitializationController(Network * network, QObject *parent = nullptr);
     ~DatabaseInitializationController();
 
     void initialize();

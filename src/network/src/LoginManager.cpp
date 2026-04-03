@@ -10,6 +10,8 @@
 #include <QThread>
 #include <QTimer>
 #include <QDebug>
+#include <QStandardPaths>
+#include <QDir>
 
 LoginManager::LoginManager(QObject *parent)
     : QObject(parent)
@@ -84,7 +86,7 @@ void LoginManager::onLoginReplyFinished()
         qDebug() << "nickname" << m_nickname;
 
         emit loginSuccess();       // 通知登录成功
-        saveTokenToStorage();      // 存储 token
+        saveTokenToStorage();      // 存储 token（已绑定用户ID）
         connectWebSocket();        // 连接 WebSocket
 
     } else {
@@ -183,43 +185,76 @@ void LoginManager::onRegisterReplyFinished()
     }
 }
 
-// -------------------- token存储 --------------------
+// ====================== 核心修改：按用户ID保存Token ======================
 void LoginManager::saveTokenToStorage()
 {
-    QSettings settings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    // 无效用户ID，不保存
+    if (m_userId <= 0) {
+        qDebug() << "保存失败：用户ID无效";
+        return;
+    }
+
+    // 生成【当前用户专属】配置文件路径
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(configPath);
+    dir.mkdir("users"); // 创建用户配置文件夹
+    QString userConfigFile = dir.filePath(QString("users/user_%1.ini").arg(m_userId));
+
+    // 写入当前用户的独立文件
+    QSettings settings(userConfigFile, QSettings::IniFormat);
     settings.setValue("token", m_token);
     settings.setValue("userId", m_userId);
     settings.setValue("nickname", m_nickname);
     settings.setValue("avatar", m_avatar);
-    qDebug() << "保存登录信息到：" << settings.fileName();
+    qDebug() << "保存当前用户登录信息到：" << settings.fileName();
 }
 
+// ====================== 核心修改：按用户ID读取Token ======================
 void LoginManager::loadTokenFromStorage()
 {
-    QSettings settings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
+    // 无效用户ID，不读取
+    if (m_userId <= 0) {
+        qDebug() << "读取失败：用户ID无效";
+        return;
+    }
+
+    // 读取【当前用户专属】配置文件
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(configPath);
+    QString userConfigFile = dir.filePath(QString("users/user_%1.ini").arg(m_userId));
+
+    QSettings settings(userConfigFile, QSettings::IniFormat);
     m_token = settings.value("token").toString();
     m_userId = settings.value("userId").toLongLong();
     m_nickname = settings.value("nickname").toString();
     m_avatar = settings.value("avatar").toString();
-    qDebug() << "加载登录信息从：" << settings.fileName();
+    qDebug() << "加载当前用户登录信息从：" << settings.fileName();
 }
 
+// ====================== 核心修改：清除当前用户的Token ======================
 void LoginManager::clearLoginState()
 {
+    // 先清空本地变量
     m_token.clear();
     m_userId = 0;
     m_nickname.clear();
     m_avatar.clear();
+
+    // 关闭WebSocket
     if (m_webSocket) {
         m_webSocket->close();
         m_webSocket->deleteLater();
         m_webSocket = nullptr;
     }
-    QSettings settings(QCoreApplication::organizationName(), QCoreApplication::applicationName());
-    settings.remove("token");
-    settings.remove("userId");
-    settings.remove("nickname");
-    settings.remove("avatar");
+
+    // 仅删除【当前用户】的配置文件，不影响其他账号
+    QString configPath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    QDir dir(configPath);
+    QString userConfigFile = dir.filePath(QString("users/user_%1.ini").arg(m_userId));
+
+    QSettings settings(userConfigFile, QSettings::IniFormat);
+    settings.clear(); // 清空当前用户的所有登录数据
+    qDebug() << "已清除当前用户的登录信息";
 }
 
 // -------------------- WebSocket --------------------

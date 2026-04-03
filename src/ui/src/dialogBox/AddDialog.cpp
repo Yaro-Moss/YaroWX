@@ -19,7 +19,8 @@ void AddDialog::on_addfriendButton_clicked()
     if(!addFriendDialog) addFriendDialog = new AddFriendDialog(m_contactController);
 
     addFriendDialog->show();
-
+    addFriendDialog->setMediaDialog(m_mediaDialog);
+    addFriendDialog->setWeChatWidget(m_weChatWidget);
     this->deleteLater();
 }
 
