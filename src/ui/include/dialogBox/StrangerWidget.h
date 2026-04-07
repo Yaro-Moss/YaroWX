@@ -7,7 +7,7 @@
 namespace Ui {
 class StrangerWidget;
 }
-
+class MediaDialog;
 class StrangerWidget : public QWidget
 {
     Q_OBJECT
@@ -17,6 +17,7 @@ public:
     ~StrangerWidget();
 
     void updateUser(const User& user);
+    void setMediaDialog(MediaDialog* mediaDialog);
 
 signals:
     void addFriend(const User& user);
@@ -27,6 +28,7 @@ private slots:
 private:
     Ui::StrangerWidget *ui;
     User m_user;
+    MediaDialog  *m_mediaDialog;
 };
 
 #endif // STRANGERWIDGET_H

@@ -116,6 +116,25 @@ QString ConfigManager::getFriendRequestUrl()const
     return m_settings->value("Network/FriendRequestUrl", "http://192.168.107.119:8080/api/friend/request").toString();
 }
 
+QString ConfigManager::getFriendURL()const
+{
+    if (!m_settings) return "http://localhost:8080/api/v1/grtfriend/%1";
+    return m_settings->value("Network/getFriendURL", "http://localhost:8080/api/v1/grtfriend/%1").toString();
+}
+
+QString ConfigManager::updateFriendURL()const
+{
+    if (!m_settings) return "http://localhost:8080/api/v1/putfriend/1%";
+    return m_settings->value("Network/updateFriendURL", "http://localhost:8080/api/v1/putfriend/1%").toString();
+}
+
+QString ConfigManager::deleteFriendURL()const
+{
+    if (!m_settings) return "http://localhost:8080/api/v1/delfriend/1%";
+    return m_settings->value("Network/deleteFriendURL", "http://192.168.107.119:8080/api/v1/delfriend/1%").toString();
+}
+
+
 int ConfigManager::maxRetry() const
 {
     if (!m_settings) return 5;
@@ -139,8 +158,8 @@ QString ConfigManager::getPendingRequestsUrl() const
 
 QString ConfigManager::processRequestUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/friend/request/{1}";
-    return m_settings->value("Network/processRequestUrl", "http://localhost:8080/api/friend/request/{1}").toString();
+    if (!m_settings) return "http://localhost:8080/api/friend/request/{1%}";
+    return m_settings->value("Network/processRequestUrl", "http://localhost:8080/api/friend/request/{1%}").toString();
 }
 
 

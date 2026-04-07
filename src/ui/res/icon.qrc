@@ -1,6 +1,5 @@
 <RCC>
     <qresource prefix="/a">
-        <file>icons/ic_列表_文件传输助手.svg</file>
         <file>icons/translate,翻译,翻译页面.svg</file>
         <file>icons/笔记本.svg</file>
         <file>icons/表情包.svg</file>
@@ -36,7 +35,6 @@
         <file>icons/悬浮窗.svg</file>
         <file>icons/预览图片.png</file>
         <file>image/login.png</file>
-        <file>image/二维码.png</file>
         <file>icons/QQ登录.svg</file>
         <file>icons/微信登录.svg</file>
         <file>icons/微信号.svg</file>
@@ -52,5 +50,7 @@
         <file>icons/爱心.svg</file>
         <file>icons/评论.svg</file>
         <file>icons/图片.svg</file>
+        <file>icons/List_FileTransferAssistant.svg</file>
+        <file>image/QRCode.png</file>
     </qresource>
 </RCC>

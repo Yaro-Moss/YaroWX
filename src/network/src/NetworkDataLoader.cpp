@@ -1,6 +1,6 @@
 #include "NetworkDataLoader.h"
 #include "ConfigManager.h"
-#include "FriendRequestItem.h"
+#include "FriendRequest.h"
 #include "LoginManager.h"
 #include <QUrlQuery>
 #include <QEventLoop>
@@ -16,7 +16,10 @@ NetworkDataLoader::NetworkDataLoader(LoginManager *loginManager, QObject *parent
 {
 }
 
-bool NetworkDataLoader::sendGetRequest(const QUrl &url, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs)
+bool NetworkDataLoader::sendGetRequest(const QUrl &url,
+                                       QJsonDocument &responseDoc,
+                                       QString &errorMessage,
+                                       int timeoutMs)
 {
     if (!m_loginManager->isLoggedIn()) {
         errorMessage = "用户未登录";
@@ -29,11 +32,13 @@ bool NetworkDataLoader::sendGetRequest(const QUrl &url, QJsonDocument &responseD
         return false;
     }
 
+    // 改为局部 QNetworkAccessManager（无父对象，线程安全）
+    QNetworkAccessManager localManager;
     QNetworkRequest request(url);
     request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
     request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
 
-    QNetworkReply *reply = m_networkManager.get(request);
+    QNetworkReply *reply = localManager.get(request);
 
     // 使用事件循环阻塞等待
     QEventLoop loop;
@@ -68,6 +73,180 @@ bool NetworkDataLoader::sendGetRequest(const QUrl &url, QJsonDocument &responseD
     reply->deleteLater();
     return success;
 }
+
+bool NetworkDataLoader::sendPostRequest(const QUrl &url,
+                                        const QJsonObject &payload,
+                                        QJsonDocument &responseDoc,
+                                        QString &errorMessage,
+                                        int timeoutMs)
+{
+    if (!m_loginManager->isLoggedIn()) {
+        errorMessage = "用户未登录";
+        return false;
+    }
+
+    QString token = m_loginManager->getToken();
+    if (token.isEmpty()) {
+        errorMessage = "Token 为空";
+        return false;
+    }
+
+    QNetworkAccessManager localManager;
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
+
+    QByteArray postData = QJsonDocument(payload).toJson();
+    QNetworkReply *reply = localManager.post(request, postData);
+
+    // 2. 事件循环等待（保持不变）
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeoutTimer.start(timeoutMs);
+    loop.exec();
+
+    bool success = false;
+    if (timeoutTimer.isActive()) {
+        timeoutTimer.stop();
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray data = reply->readAll();
+            QJsonParseError parseError;
+            responseDoc = QJsonDocument::fromJson(data, &parseError);
+            if (parseError.error == QJsonParseError::NoError) {
+                success = true;
+            } else {
+                errorMessage = "JSON 解析失败: " + parseError.errorString();
+            }
+        } else {
+            errorMessage = reply->errorString();
+        }
+    } else {
+        reply->abort();
+        errorMessage = "请求超时";
+    }
+
+    reply->deleteLater();
+    return success;
+}
+
+bool NetworkDataLoader::sendPutRequest(const QUrl &url,
+                                       const QJsonObject &payload,
+                                       QJsonDocument &responseDoc,
+                                       QString &errorMessage,
+                                       int timeoutMs)
+{
+    if (!m_loginManager->isLoggedIn()) {
+        errorMessage = "用户未登录";
+        return false;
+    }
+
+    QString token = m_loginManager->getToken();
+    if (token.isEmpty()) {
+        errorMessage = "Token 为空";
+        return false;
+    }
+
+    // 局部 QNetworkAccessManager，避免跨线程问题
+    QNetworkAccessManager localManager;
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
+
+    QByteArray putData = QJsonDocument(payload).toJson();
+    QNetworkReply *reply = localManager.put(request, putData);
+
+    // 事件循环等待
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeoutTimer.start(timeoutMs);
+    loop.exec();
+
+    bool success = false;
+    if (timeoutTimer.isActive()) {
+        timeoutTimer.stop();
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray data = reply->readAll();
+            QJsonParseError parseError;
+            responseDoc = QJsonDocument::fromJson(data, &parseError);
+            if (parseError.error == QJsonParseError::NoError) {
+                success = true;
+            } else {
+                errorMessage = "JSON 解析失败: " + parseError.errorString();
+            }
+        } else {
+            errorMessage = reply->errorString();
+        }
+    } else {
+        reply->abort();
+        errorMessage = "请求超时";
+    }
+
+    reply->deleteLater();
+    return success;
+}
+
+bool NetworkDataLoader::sendDeleteRequest(const QUrl &url,
+                                          QJsonDocument &responseDoc,
+                                          QString &errorMessage,
+                                          int timeoutMs)
+{
+    if (!m_loginManager->isLoggedIn()) {
+        errorMessage = "用户未登录";
+        return false;
+    }
+
+    QString token = m_loginManager->getToken();
+    if (token.isEmpty()) {
+        errorMessage = "Token 为空";
+        return false;
+    }
+
+    QNetworkAccessManager localManager;
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
+
+    QNetworkReply *reply = localManager.deleteResource(request);  // DELETE 请求
+
+    QEventLoop loop;
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeoutTimer.start(timeoutMs);
+    loop.exec();
+
+    bool success = false;
+    if (timeoutTimer.isActive()) {
+        timeoutTimer.stop();
+        if (reply->error() == QNetworkReply::NoError) {
+            QByteArray data = reply->readAll();
+            QJsonParseError parseError;
+            responseDoc = QJsonDocument::fromJson(data, &parseError);
+            if (parseError.error == QJsonParseError::NoError) {
+                success = true;
+            } else {
+                errorMessage = "JSON 解析失败: " + parseError.errorString();
+            }
+        } else {
+            errorMessage = reply->errorString();
+        }
+    } else {
+        reply->abort();
+        errorMessage = "请求超时";
+    }
+
+    reply->deleteLater();
+    return success;
+}
+
+
 
 bool NetworkDataLoader::loadUserInfo(QJsonObject &userInfo, QString &errorMessage)
 {
@@ -145,61 +324,6 @@ bool NetworkDataLoader::searchUsers(const QString &keyword, QJsonArray &usersArr
 }
 
 
-bool NetworkDataLoader::sendPostRequest(const QUrl &url, const QJsonObject &payload, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs)
-{
-    if (!m_loginManager->isLoggedIn()) {
-        errorMessage = "用户未登录";
-        return false;
-    }
-
-    QString token = m_loginManager->getToken();
-    if (token.isEmpty()) {
-        errorMessage = "Token 为空";
-        return false;
-    }
-
-    QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-    request.setRawHeader("Authorization", ("Bearer " + token).toUtf8());
-
-    QByteArray postData = QJsonDocument(payload).toJson();
-    QNetworkReply *reply = m_networkManager.post(request, postData);
-
-    // 事件循环等待
-    QEventLoop loop;
-    QTimer timeoutTimer;
-    timeoutTimer.setSingleShot(true);
-    connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
-    connect(&timeoutTimer, &QTimer::timeout, &loop, &QEventLoop::quit);
-    timeoutTimer.start(timeoutMs);
-    loop.exec();
-
-    bool success = false;
-    if (timeoutTimer.isActive()) {
-        timeoutTimer.stop();
-        if (reply->error() == QNetworkReply::NoError) {
-            QByteArray data = reply->readAll();
-            QJsonParseError parseError;
-            responseDoc = QJsonDocument::fromJson(data, &parseError);
-            if (parseError.error == QJsonParseError::NoError) {
-                success = true;
-            } else {
-                errorMessage = "JSON 解析失败: " + parseError.errorString();
-            }
-        } else {
-            errorMessage = reply->errorString();
-        }
-    } else {
-        reply->abort();
-        errorMessage = "请求超时";
-    }
-
-    reply->deleteLater();
-    return success;
-}
-
-
-
 // ==============================================
 // 1. 发送好友申请（带附加数据 + 无code判断）
 // ==============================================
@@ -236,7 +360,7 @@ bool NetworkDataLoader::sendFriendRequest(
     QJsonArray tagArray;
     if (!tags.isEmpty()) {
         QStringList tagList = tags.split(",", Qt::SkipEmptyParts);
-        for (const QString& tag : tagList) {
+        for (const QString& tag : std::as_const(tagList)) {
             tagArray.append(tag.trimmed());
         }
     }
@@ -256,7 +380,6 @@ bool NetworkDataLoader::sendFriendRequest(
     }
     QJsonObject resObj = responseDoc.object();
 
-    // ===================== 后端已删除code，直接判断error =====================
     if (resObj.contains("error")) {
         errorMessage = resObj["error"].toString();
         return false;
@@ -271,12 +394,12 @@ bool NetworkDataLoader::sendFriendRequest(
 // 2. 获取待处理好友申请列表
 // ==============================================
 bool NetworkDataLoader::getPendingFriendRequests(
-    QList<FriendRequestItem> &outList,
-    QString &errorMessage)
+    QList<FriendRequest>& outList,
+    QString& errorMessage)
 {
     errorMessage.clear();
     outList.clear();
-    ConfigManager *config = ConfigManager::instance();
+    ConfigManager* config = ConfigManager::instance();
     QUrl url(config->getPendingRequestsUrl());
 
     QJsonDocument responseDoc;
@@ -300,32 +423,49 @@ bool NetworkDataLoader::getPendingFriendRequests(
     }
 
     QJsonArray array = responseDoc.array();
-    for (const QJsonValue& val : array) {
+    for (const QJsonValue& val : std::as_const(array)) {
         QJsonObject obj = val.toObject();
-        FriendRequestItem item;
+        FriendRequest request;
 
-        item.id = obj["id"].toVariant().toLongLong();
-        item.fromUserId = obj["from_user_id"].toVariant().toLongLong();
-        item.message = obj["message"].toString();
-        item.status = obj["status"].toInt();
-        item.createdAt = obj["created_at"].toString();
-        item.fromNickname = obj["from_nickname"].toString();
-        item.fromAvatar = obj["from_avatar"].toString();
-        item.fromAccount = obj["from_account"].toString();
+        // 使用专用 setter 设置服务端字段
+        request.setid(obj["id"].toVariant().toLongLong());
+        request.setfrom_user_id(obj["from_user_id"].toVariant().toLongLong());
+        request.setmessage(obj["message"].toString());
+        request.setstatus(obj["status"].toInt());
 
-        outList.append(item);
+        // 时间转换：服务端返回 "yyyy-MM-dd HH:mm:ss" 本地时间 → Unix 时间戳
+        QString createdAtStr = obj["created_at"].toString();
+        qint64 timestamp = 0;
+        if (!createdAtStr.isEmpty()) {
+            QDateTime dt = QDateTime::fromString(createdAtStr, "yyyy-MM-dd HH:mm:ss");
+            if (dt.isValid()) {
+                timestamp = dt.toSecsSinceEpoch();
+            }
+        }
+        request.setcreated_at(timestamp);
+
+        request.setfrom_nickname(obj["from_nickname"].toString());
+        request.setfrom_avatar(obj["from_avatar"].toString());
+        request.setfrom_account(obj["from_account"].toString());
+
+        // 本地扩展字段默认值
+        request.setis_read(0);
+        request.setlocal_processed(0);
+
+        outList.append(request);
     }
 
     return true;
 }
 
 // ==============================================
-// 3. 处理好友申请（同意=1 / 拒绝=2）
+// 3. 处理好友申请
 // ==============================================
 bool NetworkDataLoader::processFriendRequest(
     qint64 requestId,
-    bool agree,  // true=同意  false=拒绝
-    QString &errorMessage)
+    bool agree,
+    QString& errorMessage,
+    const QJsonObject& meta)
 {
     errorMessage.clear();
     ConfigManager *config = ConfigManager::instance();
@@ -333,9 +473,13 @@ bool NetworkDataLoader::processFriendRequest(
 
     QJsonObject payload;
     payload["status"] = agree ? 1 : 2;
+    if (!meta.isEmpty()) {
+        payload["meta"] = meta;   // 附加被申请人的备注、标签等信息
+    }
 
     QJsonDocument responseDoc;
-    if (!sendPostRequest(url, payload, responseDoc, errorMessage)) {
+    // 关键修改：改为 sendPutRequest
+    if (!sendPutRequest(url, payload, responseDoc, errorMessage)) {
         return false;
     }
 
@@ -345,14 +489,111 @@ bool NetworkDataLoader::processFriendRequest(
     }
     QJsonObject resObj = responseDoc.object();
 
-    // 仅判断错误
     if (resObj.contains("error")) {
         errorMessage = resObj["error"].toString();
         return false;
     }
-
-    // 无code，直接成功
     return true;
 }
+
+
+bool NetworkDataLoader::getFriend(qint64 friendId,
+                                  QJsonObject &friendData,
+                                  QString &errorMessage)
+{
+    errorMessage.clear();
+    ConfigManager *config = ConfigManager::instance();
+    QString urlStr = config->getFriendURL().arg( QString::number(friendId));
+    QUrl url(urlStr);
+
+    QJsonDocument responseDoc;
+    if (!sendGetRequest(url, responseDoc, errorMessage)) {
+        return false;
+    }
+
+    if (!responseDoc.isObject()) {
+        errorMessage = "响应格式错误，期望 JSON 对象";
+        return false;
+    }
+
+    QJsonObject obj = responseDoc.object();
+    if (obj.contains("error")) {
+        errorMessage = obj["error"].toString();
+        return false;
+    }
+
+    friendData = obj;
+    return true;
+}
+
+
+bool NetworkDataLoader::updateFriend(qint64 friendId,
+                                     const QJsonObject &updateData,
+                                     QString &errorMessage)
+{
+    errorMessage.clear();
+    ConfigManager *config = ConfigManager::instance();
+    QString urlStr = config->deleteFriendURL().arg(QString::number(friendId));
+    QUrl url(urlStr);
+
+    // 过滤掉服务端不允许的字段（客户端调用时最好只传允许的字段，这里再做一次保险）
+    QJsonObject safeData = updateData;
+    static const QStringList forbidden = {"id", "user_id", "friend_id", "created_at", "updated_at", "status"};
+    for (const QString &key : forbidden) {
+        safeData.remove(key);
+    }
+
+    QJsonDocument responseDoc;
+    if (!sendPutRequest(url, safeData, responseDoc, errorMessage)) {
+        return false;
+    }
+
+    if (!responseDoc.isObject()) {
+        errorMessage = "响应格式错误";
+        return false;
+    }
+
+    QJsonObject obj = responseDoc.object();
+    if (obj.contains("error")) {
+        errorMessage = obj["error"].toString();
+        return false;
+    }
+
+    // 成功时服务端返回 {"success": true}，也可以不检查具体内容
+    return true;
+}
+
+
+bool NetworkDataLoader::deleteFriend(qint64 friendId, QString &errorMessage)
+{
+    errorMessage.clear();
+    ConfigManager *config = ConfigManager::instance();
+    QString urlStr = config->updateFriendURL().arg(QString::number(friendId));
+    QUrl url(urlStr);
+
+    QJsonDocument responseDoc;  // 204 响应可能为空，但 sendDeleteRequest 仍会尝试解析 JSON
+    if (!sendDeleteRequest(url, responseDoc, errorMessage)) {
+        // 如果是因为解析空响应失败，特殊处理
+        if (errorMessage.contains("JSON 解析失败") && responseDoc.isNull()) {
+            errorMessage.clear();
+            return true;  // 204 无内容视为成功
+        }
+        return false;
+    }
+
+    // 如果有响应体，检查是否有错误字段
+    if (!responseDoc.isNull() && responseDoc.isObject()) {
+        QJsonObject obj = responseDoc.object();
+        if (obj.contains("error")) {
+            errorMessage = obj["error"].toString();
+            return false;
+        }
+    }
+    return true;
+}
+
+
+
+
 
 

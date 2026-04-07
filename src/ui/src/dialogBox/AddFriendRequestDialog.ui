@@ -157,7 +157,7 @@ background-color: rgb(247, 247, 247);
        <number>48</number>
       </property>
       <item>
-       <widget class="QWidget" name="widget" native="true">
+       <widget class="QWidget" name="widget_8" native="true">
         <layout class="QVBoxLayout" name="verticalLayout">
          <property name="spacing">
           <number>3</number>
@@ -322,7 +322,7 @@ QLineEdit:disabled {
        </widget>
       </item>
       <item>
-       <widget class="QWidget" name="widget" native="true">
+       <widget class="QWidget" name="widget_7" native="true">
         <layout class="QVBoxLayout" name="verticalLayout_3">
          <property name="spacing">
           <number>3</number>

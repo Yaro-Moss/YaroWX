@@ -6,9 +6,10 @@
 #include <QtNetwork/QNetworkReply>
 #include <QJsonObject>
 #include <QJsonArray>
+#include "FriendRequest.h"
+#include "LoginManager.h"
 
-class LoginManager; // 前向声明
-struct  FriendRequestItem;
+class LoginManager;
 
 class NetworkDataLoader : public QObject
 {
@@ -38,10 +39,21 @@ public:
                            qint64 &outRequestId,
                            QString &errorMessage);
 
-    bool getPendingFriendRequests(QList<FriendRequestItem> &outList,
+    bool getPendingFriendRequests(QList<FriendRequest>& outList,
                                   QString &errorMessage);
 
-    bool processFriendRequest(qint64 requestId, bool agree, QString &errorMessage);
+    bool processFriendRequest(qint64 requestId,
+                              bool agree,
+                              QString& errorMessage,
+                              const QJsonObject& meta = QJsonObject());
+
+    bool deleteFriend(qint64 friendId, QString &errorMessage);
+    bool updateFriend(qint64 friendId, const QJsonObject &updateData, QString &errorMessage);
+    bool getFriend(qint64 friendId, QJsonObject &friendData, QString &errorMessage);
+
+    qint64 getCurrentLoginUserID(){
+        return m_loginManager->getUserId();
+    }
 
 private:
     // 通用同步请求方法
@@ -49,8 +61,14 @@ private:
 
     bool sendPostRequest(const QUrl &url, const QJsonObject &payload, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs = 10000);
 
+    bool sendPutRequest(const QUrl &url, const QJsonObject &payload, QJsonDocument &responseDoc, QString &errorMessage, int timeoutMs = 10000);
+
+    bool sendDeleteRequest(const QUrl &url,
+                           QJsonDocument &responseDoc,
+                           QString &errorMessage,
+                           int timeoutMs = 10000);
+
     LoginManager *m_loginManager;
-    QNetworkAccessManager m_networkManager;
 };
 
 #endif // NETWORKDATALOADER_H

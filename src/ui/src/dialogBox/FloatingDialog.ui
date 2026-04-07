@@ -103,7 +103,7 @@ color: rgb(149, 149, 149);</string>
      </property>
      <property name="icon">
       <iconset resource="../../res/icon.qrc">
-       <normaloff>:/a/icons/ic_列表_文件传输助手.svg</normaloff>:/a/icons/ic_列表_文件传输助手.svg</iconset>
+       <normaloff>:/a/icons/List_FileTransferAssistant.svg</normaloff>:/a/icons/List_FileTransferAssistant.svg</iconset>
      </property>
      <property name="iconSize">
       <size>

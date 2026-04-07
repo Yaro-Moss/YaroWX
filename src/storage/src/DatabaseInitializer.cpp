@@ -127,7 +127,8 @@ bool DatabaseInitializer::createTables(QSqlDatabase &db)
         DatabaseSchema::getCreateTableMessages(),
         DatabaseSchema::getCreateTableMediaCache(),
         DatabaseSchema::getCreateTableLocalMoment(),
-        DatabaseSchema::getCreateTableLocalMomentInteract()
+        DatabaseSchema::getCreateTableLocalMomentInteract(),
+        DatabaseSchema::getCreateTableFriendRequests()
     };
 
     for (const QString &sql : tableSqls) {

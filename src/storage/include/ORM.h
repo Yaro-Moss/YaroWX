@@ -6,8 +6,9 @@
 #include <QMutex>
 #include <QVariantList>
 #include <optional>
+#include <type_traits>
 #include "DbConnectionManager.h"
-#include "ORM_Macros.h"  // 假设宏定义在此
+#include "ORM_Macros.h"
 
 class Orm {
 public:
@@ -98,7 +99,7 @@ public:
         return result;
     }
 
-    // 插入记录：只插入已设置的字段（非空），未设置字段跳过，使用数据库默认值（如 NULL）
+    // 插入记录（非 const 版本）：支持自增主键写回
     template<typename T>
     bool insert(T& obj) {
         QMutexLocker locker(&m_mutex);
@@ -112,7 +113,6 @@ public:
             if (autoPk && f == pk) continue;
             QVariant val = obj.getField(f);
             if (val.isNull()) {
-                // 字段未设置，跳过插入，让数据库使用默认值
                 continue;
             }
             insertFields << f;
@@ -120,7 +120,6 @@ public:
         }
 
         if (insertFields.isEmpty()) {
-            // 没有要插入的字段，视为无效操作
             m_lastError = QSqlError("No fields to insert", "", QSqlError::StatementError);
             return false;
         }
@@ -145,11 +144,61 @@ public:
         }
 
         if (autoPk) {
-            // 自增主键写回对象
-            obj.setField(pk, query.lastInsertId());
+            obj.setField(pk, query.lastInsertId());  // 写回自增主键
         }
 
-        m_lastError = QSqlError();  // 清除错误
+        m_lastError = QSqlError();
+        return true;
+    }
+
+    // 插入记录（const 版本）：不支持自增主键写回（因为不能修改对象）
+    // 适用于主键由外部提供（如服务器分配）的场景
+    template<typename T>
+    bool insert(const T& obj) {
+        QMutexLocker locker(&m_mutex);
+        QStringList flds = T::fields();
+        QString pk = T::primaryKey();
+        // const 对象无法修改，因此永远不尝试写回自增主键
+        bool autoPk = false;
+
+        QStringList insertFields;
+        QVariantList values;
+        for (const QString& f : flds) {
+            if (autoPk && f == pk) continue;
+            QVariant val = obj.getField(f);
+            if (val.isNull()) {
+                continue;
+            }
+            insertFields << f;
+            values << val;
+        }
+
+        if (insertFields.isEmpty()) {
+            m_lastError = QSqlError("No fields to insert", "", QSqlError::StatementError);
+            return false;
+        }
+
+        QString sql = QString("INSERT INTO %1 (%2) VALUES (%3)")
+                          .arg(T::tableName())
+                          .arg(insertFields.join(','))
+                          .arg(QString("?,").repeated(values.size()).chopped(1));
+
+        QSqlQuery query(m_db);
+        if (!query.prepare(sql)) {
+            m_lastError = query.lastError();
+            return false;
+        }
+        if (!execWithBind(query, values)) {
+            m_lastError = query.lastError();
+            return false;
+        }
+        if (!query.exec()) {
+            m_lastError = query.lastError();
+            return false;
+        }
+
+        // 对于 const 对象，不写回自增主键（如果需要，请使用非 const 版本）
+        m_lastError = QSqlError();
         return true;
     }
 
@@ -171,7 +220,6 @@ public:
             if (f == pk) continue;
             QVariant val = obj.getField(f);
             if (val.isNull()) {
-                // 字段未设置，跳过更新（保留原值）
                 continue;
             }
             setClauses << f + " = ?";
@@ -187,7 +235,7 @@ public:
                           .arg(T::tableName())
                           .arg(setClauses.join(','))
                           .arg(pk);
-        values << pkVal;  // WHERE 条件
+        values << pkVal;
 
         QSqlQuery query(m_db);
         if (!query.prepare(sql)) {
@@ -203,7 +251,7 @@ public:
             return false;
         }
 
-        m_lastError = QSqlError();  // 清除错误
+        m_lastError = QSqlError();
         return true;
     }
 
@@ -231,7 +279,7 @@ public:
             return false;
         }
 
-        m_lastError = QSqlError();  // 清除错误
+        m_lastError = QSqlError();
         return true;
     }
 

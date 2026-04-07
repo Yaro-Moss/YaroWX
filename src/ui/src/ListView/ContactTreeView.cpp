@@ -25,7 +25,9 @@ ContactTreeView::ContactTreeView(QWidget *parent)
     createContactMenu();
     // 展开所有节点
     expandAll();
-
+    setMouseTracking(true);
+    setStyleSheet("QTreeView::branch { background: transparent; }"
+                  "QTreeView::item { background: transparent; }");
 }
 
 
@@ -42,6 +44,80 @@ Contact ContactTreeView::getSelectedContact() const
         return getContactFromIndex(selectedIndexes.first());
     }
     return Contact();
+}
+
+void ContactTreeView::drawRow(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const
+{
+    QRect rowRect(0, option.rect.y(), viewport()->width(), option.rect.height());
+
+    // 1. 绘制整行背景
+    QColor bgColor;
+    if (selectionModel()->isSelected(index)) {
+        bgColor = QColor(226, 226, 226);
+    } else if (m_lastHoverIndex.isValid() && m_lastHoverIndex == index) {
+        bgColor = QColor(238, 238, 238);
+    } else {
+        bgColor = palette().window().color();
+    }
+    painter->fillRect(rowRect, bgColor);
+
+    // 2. 手动绘制分支图标（如果需要）
+    if (model()->hasChildren(index)) {
+        QRect branchRect = visualRect(index);
+        branchRect.setLeft(0);
+        branchRect.setWidth(indentation());
+        QStyleOptionViewItem branchOpt = option;
+        branchOpt.rect = branchRect;
+        branchOpt.state = QStyle::State_Children;
+        if (isExpanded(index))
+            branchOpt.state |= QStyle::State_Open;
+        style()->drawPrimitive(QStyle::PE_IndicatorBranch, &branchOpt, painter, this);
+    }
+
+    // 3. 手动调用委托绘制内容
+    QStyleOptionViewItem itemOpt = option;
+    itemOpt.rect = visualRect(index); // 内容区域
+    itemDelegate()->paint(painter, itemOpt, index);
+}
+
+void ContactTreeView::drawBranch(QPainter *painter, const QRect &rect, const QModelIndex &index) const
+{
+    // 只绘制展开/折叠图标，不绘制任何背景
+    QStyleOptionViewItem opt;
+    opt.rect = rect;
+    opt.state = QStyle::State_None;
+    if (isExpanded(index))
+        opt.state |= QStyle::State_Open;
+    if (model() && model()->hasChildren(index))
+        opt.state |= QStyle::State_Children;
+    style()->drawPrimitive(QStyle::PE_IndicatorBranch, &opt, painter, this);
+}
+
+void ContactTreeView::mouseMoveEvent(QMouseEvent *event)
+{
+    CustomTreeView::mouseMoveEvent(event);
+    QModelIndex newHoverIndex = indexAt(event->pos());
+    if (newHoverIndex != m_lastHoverIndex) {
+        // 重绘旧行（清除悬停背景）
+        if (m_lastHoverIndex.isValid()) {
+            update(visualRect(m_lastHoverIndex));
+        }
+        // 重绘新行（应用悬停背景）
+        if (newHoverIndex.isValid()) {
+            update(visualRect(newHoverIndex));
+        }
+        m_lastHoverIndex = newHoverIndex;
+    }
+}
+
+void ContactTreeView::leaveEvent(QEvent *event)
+{
+    // 鼠标离开视图时，清除最后悬停行的背景
+    if (m_lastHoverIndex.isValid()) {
+        update(visualRect(m_lastHoverIndex));
+        m_lastHoverIndex = QModelIndex();
+    }
+    CustomTreeView::leaveEvent(event);
 }
 
 Contact ContactTreeView::getContactFromIndex(const QModelIndex &index) const
@@ -115,7 +191,6 @@ void ContactTreeView::contextMenuEvent(QContextMenuEvent *event)
         contactMenu->exec(event->globalPos());
     }
 }
-
 
 void ContactTreeView::selectionChanged(const QItemSelection &selected, const QItemSelection &deselected)
 {

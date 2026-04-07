@@ -155,3 +155,75 @@ Contact ContactTreeModel::getCurrentLoginUser()
     Contact emptyContact;
     return emptyContact;
 }
+
+
+void ContactTreeModel::loadFriendRequests(const QList<FriendRequest>& requests)
+{
+    if (!m_newFriendItem) return;
+
+    // 清空现有子项（同时清理哈希表）
+    if (m_newFriendItem->rowCount() > 0) {
+        m_newFriendItem->removeRows(0, m_newFriendItem->rowCount());
+        m_friendRequestItems.clear();
+    }
+
+    Qt::ItemFlags itemFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    for (const FriendRequest& req : requests) {
+        QStandardItem* item = new QStandardItem();
+        item->setFlags(itemFlags);
+        item->setData(QVariant::fromValue(req), Qt::UserRole);
+        m_friendRequestItems.insert(req.idValue(), item);
+        m_newFriendItem->appendRow(item);
+    }
+}
+
+void ContactTreeModel::addFriendRequest(const FriendRequest& request)
+{
+    if (!m_newFriendItem) return;
+    if (m_friendRequestItems.contains(request.idValue())) {
+        // 已存在，更新数据
+        updateFriendRequest(request);
+        return;
+    }
+
+    Qt::ItemFlags itemFlags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    QStandardItem* item = new QStandardItem();
+    item->setFlags(itemFlags);
+    item->setData(QVariant::fromValue(request), Qt::UserRole);
+    m_friendRequestItems.insert(request.idValue(), item);
+    m_newFriendItem->appendRow(item);
+}
+
+void ContactTreeModel::removeFriendRequest(qint64 requestId)
+{
+    QStandardItem* item = m_friendRequestItems.value(requestId, nullptr);
+    if (item && m_newFriendItem) {
+        m_newFriendItem->removeRow(item->row());
+        m_friendRequestItems.remove(requestId);
+    }
+}
+
+void ContactTreeModel::updateFriendRequest(const FriendRequest& request)
+{
+    QStandardItem* item = m_friendRequestItems.value(request.idValue(), nullptr);
+    if (item) {
+        item->setData(QVariant::fromValue(request), Qt::UserRole);
+    }
+}
+
+bool ContactTreeModel::isFriendRequestNode(const QModelIndex& index) const
+{
+    if (!index.isValid()) return false;
+    QStandardItem* item = itemFromIndex(index);
+    if (!item) return false;
+    // 必须确保父节点是 m_newFriendItem
+    if (item->parent() != m_newFriendItem) return false;
+    QVariant data = item->data(Qt::UserRole);
+    return data.isValid() && data.canConvert<FriendRequest>();
+}
+
+FriendRequest ContactTreeModel::getFriendRequestByIndex(const QModelIndex& index) const
+{
+    if (!isFriendRequestNode(index)) return FriendRequest();
+    return index.data(Qt::UserRole).value<FriendRequest>();
+}

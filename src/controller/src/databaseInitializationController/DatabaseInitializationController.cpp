@@ -209,12 +209,11 @@ bool DatabaseInitializationController::saveFriendsToDb(const QJsonArray &friends
         friendUser.setaccount(userObj["account"].toString());
         friendUser.setnickname(userObj["nickname"].toString());
         friendUser.setavatar(userObj["avatar"].toString());
-        friendUser.setavatar_local_path("");          // 本地缓存路径暂为空
+        friendUser.setavatar_local_path("");
         friendUser.setprofile_cover(userObj["profile_cover"].toString());
         friendUser.setgender(userObj["gender"].toInt());
         friendUser.setregion(userObj["region"].toString());
         friendUser.setsignature(userObj["signature"].toString());
-        // 如果是当前登录用户，设置 is_current = 1，否则为 0
         friendUser.setis_current( (friendUserId == m_currentUserId) ? 1 : 0 );
 
         // 保存或更新用户记录
@@ -353,12 +352,7 @@ bool DatabaseInitializationController::saveGroupsAddMembersToDb(const QJsonArray
             }
             user.setnickname(globalNick);
             user.setavatar(memberObj["avatar"].toString());
-            user.setavatar_local_path("");   // 本地缓存路径暂为空
-            user.setprofile_cover("");       // 朋友圈封面暂不设置
             user.setgender(0);               // 性别未知
-            user.setregion("");              // 地区暂不设置
-            user.setsignature("");           // 签名暂不设置
-            // 如果是当前登录用户，设置 is_current = 1，否则为 0
             user.setis_current( (userId == m_currentUserId) ? 1 : 0 );
 
             auto existingUser = orm.findById<User>(userId);

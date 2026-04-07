@@ -13,8 +13,9 @@ public:
     static const char* TABLE_CONVERSATIONS;
     static const char* TABLE_MESSAGES;
     static const char* TABLE_MEDIA_CACHE;
-    static const char* TABLE_LOCAL_MOMENT;         
-    static const char* TABLE_LOCAL_MOMENT_INTERACT; 
+    static const char* TABLE_LOCAL_MOMENT;
+    static const char* TABLE_LOCAL_MOMENT_INTERACT;
+    static const char* TABLE_FRIEND_REQUESTS;
 
     // 创建表的SQL语句
     static QString getCreateTableUser();
@@ -26,6 +27,7 @@ public:
     static QString getCreateTableMediaCache();
     static QString getCreateTableLocalMoment();          
     static QString getCreateTableLocalMomentInteract();   
+    static QString getCreateTableFriendRequests();
 
     static QStringList getCreateTriggers();
     static QString getCreateIndexes();

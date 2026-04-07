@@ -114,10 +114,6 @@ void ConversationController::createSingleChat(const Contact &contact)
                 return Conversation();
             }
         }
-        qDebug()<<"联系人已存在";
-
-        qDebug() << "插入前 group_id =" << conv.group_id();
-        qDebug() << "插入前 user_id =" << conv.user_id();
 
         if (orm.insert(conv)) {
             return conv;

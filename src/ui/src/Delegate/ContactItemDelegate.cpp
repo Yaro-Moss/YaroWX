@@ -16,10 +16,7 @@ ContactItemDelegate::ContactItemDelegate(ContactTreeModel *model, QObject *paren
 void ContactItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &option,
                                 const QModelIndex &index) const
 {
-    if (!index.isValid())
-        return;
-
-    if (!m_model) {
+    if (!index.isValid() || !m_model) {
         QStyledItemDelegate::paint(painter, option, index);
         return;
     }
@@ -29,21 +26,11 @@ void ContactItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
 
     QRect rect = option.rect;
 
-    // 绘制背景
-    if (option.state & QStyle::State_Selected) {
-        // 选中状态
-        painter->fillRect(rect, QColor(240, 240, 240));
-    } else if (option.state & QStyle::State_MouseOver) {
-        // 鼠标悬停状态 - 只在可选中项上显示
-        if (!m_model->isParentNode(index)) {
-            painter->fillRect(rect, QColor(240, 240, 240));
-        }
-    }
-
-    if(m_model->isParentNode(index)){
+    // ========== 1. 父节点（分组标题） ==========
+    if (m_model->isParentNode(index)) {
         QString text = index.data(Qt::DisplayRole).toString();
 
-        // 父节点背景
+        // 父节点背景保持原样（可选，也可以交给视图，但通常分组标题不需要悬停/选中）
         painter->fillRect(rect, QColor(247, 247, 247));
 
         QRect textRect(rect.left() + 12, rect.top(),
@@ -56,62 +43,127 @@ void ContactItemDelegate::paint(QPainter *painter, const QStyleOptionViewItem &o
         font.setFamily(QStringLiteral("微软雅黑"));
         painter->setFont(font);
 
-        // 绘制文本
         painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, text);
 
         painter->restore();
         return;
     }
 
-    const int avatarSize = 40;
-    const int margin = 12;
+    // ========== 2. 好友请求节点 ==========
+    if (m_model->isFriendRequestNode(index)) {
+        FriendRequest req = m_model->getFriendRequestByIndex(index);
+        if (!req.isValid()) {
+            painter->restore();
+            return;
+        }
 
+        // 移除所有选中/悬停背景绘制，背景完全透明（由视图负责整行背景）
+        const int avatarSize = 40;
+        const int margin = 12;
+        QRect avatarRect(rect.left() + margin, rect.center().y() - avatarSize / 2,
+                         avatarSize, avatarSize);
+
+        // 绘制头像
+        ThumbnailResourceManager *mediaManager = ThumbnailResourceManager::instance();
+        QPixmap avatar = mediaManager->getThumbnail(
+            req.from_avatarValue(),
+            QSize(avatarSize, avatarSize),
+            MediaType::Avatar,
+            5,
+            "",
+            req.from_nicknameValue()
+            );
+        if (!avatar.isNull()) {
+            painter->drawPixmap(avatarRect, avatar);
+        } else {
+            drawDefaultAvatar(painter, avatarRect, req.from_nicknameValue(), 5);
+        }
+
+        // 主文本：昵称或账号
+        QString mainText = req.from_nicknameValue();
+        if (mainText.isEmpty()) mainText = req.from_accountValue();
+        QRect textRect(avatarRect.right() + margin, avatarRect.top(),
+                       rect.width() - avatarSize - margin * 3, 22);
+
+        QFont font = option.font;
+        font.setPointSizeF(11);
+        font.setFamily(QStringLiteral("微软雅黑"));
+        painter->setFont(font);
+        painter->setPen(QColor(0, 0, 0));
+        painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, mainText);
+
+        // 附言（较小字体，灰色）
+        if (!req.messageValue().isEmpty()) {
+            QRect msgRect(avatarRect.right() + margin, avatarRect.top() + 22,
+                          rect.width() - avatarSize - margin * 3, 20);
+            QFont smallFont = font;
+            smallFont.setPointSizeF(9);
+            painter->setFont(smallFont);
+            painter->setPen(QColor(120, 120, 120));
+            painter->drawText(msgRect, Qt::AlignLeft | Qt::AlignTop, req.messageValue());
+        }
+
+        // 右侧状态显示（右上角）
+        QRect statusRect(rect.right() - 60, rect.top() + 8, 50, 24);
+        if (req.statusValue() == 0) { // 待处理
+            painter->setPen(QColor(100, 100, 100));
+            painter->drawText(statusRect, Qt::AlignCenter, QStringLiteral("待处理"));
+        } else if (req.statusValue() == 1) {
+            painter->setPen(QColor(100, 100, 100));
+            painter->drawText(statusRect, Qt::AlignCenter, QStringLiteral("已同意"));
+        } else {
+            painter->setPen(QColor(150, 150, 150));
+            painter->drawText(statusRect, Qt::AlignCenter, QStringLiteral("已拒绝"));
+        }
+
+        painter->restore();
+        return;
+    }
+
+    // ========== 3. 普通联系人节点 ==========
     Contact contact = index.data(Qt::UserRole).value<Contact>();
 
+    const int avatarSize = 40;
+    const int margin = 12;
+    QRect avatarRect(rect.left() + margin, rect.center().y() - avatarSize / 2,
+                     avatarSize, avatarSize);
+
     // 绘制头像
-    QRect avatarRect(rect.left() + margin, rect.center().y()-avatarSize/2, avatarSize, avatarSize);
-    ThumbnailResourceManager* mediaManager = ThumbnailResourceManager::instance();
-    painter->setRenderHint(QPainter::Antialiasing,true);
-
-    QPixmap avatar = mediaManager->getThumbnail(contact.user.avatar_local_pathValue(),
-                                                QSize(avatarSize, avatarSize),
-                                                MediaType::Avatar,
-                                                5,
-                                                "",
-                                                contact.user.nicknameValue()
-                                                );
-
-    if(!avatar.isNull()) {
+    ThumbnailResourceManager *mediaManager = ThumbnailResourceManager::instance();
+    QPixmap avatar = mediaManager->getThumbnail(
+        contact.user.avatar_local_pathValue(),
+        QSize(avatarSize, avatarSize),
+        MediaType::Avatar,
+        5,
+        "",
+        contact.user.nicknameValue()
+        );
+    if (!avatar.isNull()) {
         painter->drawPixmap(avatarRect, avatar);
     } else {
         drawDefaultAvatar(painter, avatarRect, contact.user.nicknameValue(), 5);
     }
 
-    // 绘制文本
-    QString text = contact.remark_nameValue();
-    if(text.isEmpty()) text = contact.user.nicknameValue();
+    // 显示文本（备注名 > 昵称）
+    QString displayName = contact.remark_nameValue();
+    if (displayName.isEmpty()) displayName = contact.user.nicknameValue();
     QRect textRect(avatarRect.right() + margin, avatarRect.top(),
-                   rect.width()-avatarSize-margin*3, avatarSize);
+                   rect.width() - avatarSize - margin * 3, avatarSize);
 
-    // 设置文本颜色
-    painter->setPen(QColor(0, 0, 0));  // 恢复黑色
+    painter->setPen(QColor(0, 0, 0));
     QFont font = option.font;
     font.setPointSizeF(11);
     font.setFamily(QStringLiteral("微软雅黑"));
     painter->setFont(font);
-
-    // 绘制文本
-    painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, text);
+    painter->drawText(textRect, Qt::AlignLeft | Qt::AlignVCenter, displayName);
 
     painter->restore();
 }
 
 QSize ContactItemDelegate::sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
-    Q_UNUSED(option)
-    if(m_model->isParentNode(index)){
+    if (m_model->isParentNode(index))
         return QSize(option.rect.width(), 36);
-    }
     return QSize(option.rect.width(), 60);
 }
 

@@ -29,6 +29,7 @@ target_include_directories(controller PUBLIC
 target_link_libraries(controller PRIVATE
     Qt6::Core
     Qt6::Widgets
+    Qt6::Concurrent
     storage
     common
     media

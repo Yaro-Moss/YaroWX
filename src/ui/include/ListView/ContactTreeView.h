@@ -18,6 +18,9 @@ public:
     Contact getContactFromIndex(const QModelIndex &index) const;
 
     void setContactModel(ContactTreeModel *model);
+    void drawRow(QPainter *painter,
+                 const QStyleOptionViewItem &option,
+                 const QModelIndex &index) const override;
 
 signals:
     void sendMessage(const Contact &contact);
@@ -32,9 +35,10 @@ protected:
     void mouseReleaseEvent(QMouseEvent *event) override;
     void mouseDoubleClickEvent(QMouseEvent *event) override;
     void contextMenuEvent(QContextMenuEvent *event) override;
-
-    // 重写选择事件
+    void mouseMoveEvent(QMouseEvent *event) override;
     void selectionChanged(const QItemSelection &selected, const QItemSelection &deselected) override;
+    void leaveEvent(QEvent *event) override;
+    void drawBranch(QPainter *painter, const QRect &rect, const QModelIndex &index) const ;
 
 private:
     ContactTreeModel *m_contactModel;
@@ -49,7 +53,7 @@ private:
     QAction* sendMessageAction;
     QAction* starFriendAction;
     QAction *removeFriendAction;
-
+    mutable QPersistentModelIndex m_lastHoverIndex;  // 记录上次悬停的项
 
 };
 

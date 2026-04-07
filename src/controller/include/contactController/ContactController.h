@@ -21,7 +21,6 @@ public:
     Q_INVOKABLE void getAllContacts();
     Q_INVOKABLE void searchUser(const QString& keyword);
     Q_INVOKABLE void getContact(qint64 userId);
-    Q_INVOKABLE void addContact(const Contact& contact);
     Q_INVOKABLE void updateContact(const Contact& contact);
     Q_INVOKABLE void deleteContact(qint64 userId);
     Q_INVOKABLE void sendFriendRequest(QString &errorMessage,
@@ -45,13 +44,36 @@ public:
     // 设置当前选中的联系人（用于 UI）
     void setSelectedContact(const Contact &contact);
 
+    // 好友申请相关
+    void loadFriendRequests();                     // 从网络拉取并同步到数据库，再加载到模型
+    void onNewFriendRequestReceived(qint64 requestId, qint64 fromUserId, const QString& message);  // WebSocket 回调
+    void processFriendRequest(qint64 requestId,
+                              bool agree,
+                              std::function<void(bool)> callback = nullptr,
+                              const QString& remark = QString(),
+                              const QString& tags = QString(),
+                              const QString& description = QString(),
+                              const QString& source = QString(),
+                              int isStarred = 0);
 signals:
+    void friendRequestsLoaded();                   // 加载完成
+    void friendRequestProcessed(qint64 requestId, bool success);
+
     void contactsLoaded();              // 联系人列表加载完成
     void contactUpdated(qint64 userId); // 某个联系人被更新
     void contactRemoved(qint64 userId); // 某个联系人被删除
     void searchUsered(const QVector<Contact>& Contacts); // 搜索用户
 
+signals:
+    void contactsLoadFailed(const QString &error);
+    void contactLoadFailed(qint64 userId, const QString &error);
+    void contactUpdateFailed(qint64 userId, const QString &error);
+    void contactDeleteFailed(qint64 userId, const QString &error);
+
+
 private:
+    void reloadContactsFromDatabase();
+    void syncFriendRequestsToLocalAndModel(const QList<FriendRequest>& requests);
     ContactTreeModel *m_contactTreeModel;
     Contact m_selectedContact;          // 当前选中的联系人
     NetworkDataLoader *m_networkDataLoader;

@@ -309,6 +309,7 @@ void WeChatWidget::initCurrentUser()
                 ui->avatarPushButton->setContact(m_currentLoginUser);
             });
     contactController->getAllContacts();
+    contactController->loadFriendRequests();
 }
 
 // 联系人列表
@@ -318,6 +319,7 @@ void WeChatWidget::initContactList()
     userInfoWidget = ui->userInfoWidget;
     userInfoWidget->setWeChatWidget(this);
     userInfoWidget->setMediaDialog(mediaDialog);
+    userInfoWidget->setController(contactController);
 
     contactTreeView = ui->contactTreeView;
     contactItemDelegate = new ContactItemDelegate(contactController->contactTreeModel(), contactTreeView);
@@ -326,14 +328,68 @@ void WeChatWidget::initContactList()
     // 联系人项选中改变时
     connect(contactTreeView->selectionModel(), &QItemSelectionModel::selectionChanged,
             this, [this](const QItemSelection &selected, const QItemSelection &deselected){
+                Q_UNUSED(deselected);
 
-                if (!selected.isEmpty() && contactTreeView->getSelectedContact().isValid()){
-                    m_contact = contactTreeView->getSelectedContact();
-                    ui->rightStackedWidget->setCurrentWidget(ui->rightStackedWidgetpage1);
-                    ui->rightStackedWidgetpage1->show();
-                    userInfoWidget->setSelectedContact(m_contact);
+                // 1. 没有选中任何项 -> 隐藏右侧面板
+                if (selected.isEmpty()) {
+                    ui->rightStackedWidgetpage1->hide();
+                    return;
+                }
 
-                }else if (!deselected.isEmpty()) {
+                // 获取有效索引列表，检查是否为空
+                QModelIndexList indexes = selected.indexes();
+                if (indexes.isEmpty()) {
+                    ui->rightStackedWidgetpage1->hide();
+                    return;
+                }
+
+                QModelIndex currentIndex = indexes.first();
+                if (!currentIndex.isValid()) {
+                    ui->rightStackedWidgetpage1->hide();
+                    return;
+                }
+
+                // 3. 获取 TreeView 的 Model（必须是 ContactTreeModel）
+                ContactTreeModel *model = qobject_cast<ContactTreeModel*>(contactTreeView->model());
+                if (!model) {
+                    ui->rightStackedWidgetpage1->hide();
+                    return;
+                }
+
+                // 4. 根据节点类型分发
+                if (model->isContactNode(currentIndex)) {
+                    // 普通联系人
+                    Contact contact = currentIndex.data(Qt::UserRole).value<Contact>();
+                    if (contact.isValid()) {
+                        m_contact = contact;
+                        ui->rightStackedWidget->setCurrentWidget(ui->rightStackedWidgetpage1);
+                        ui->rightStackedWidgetpage1->show();
+                        userInfoWidget->setSelectedContact(m_contact);
+                    } else {
+                        ui->rightStackedWidgetpage1->hide();
+                    }
+                }
+                else if (model->isFriendRequestNode(currentIndex)) {
+                    // 新朋友请求
+                    FriendRequest request = currentIndex.data(Qt::UserRole).value<FriendRequest>();
+                    if (request.isValid()) {
+                        Contact contact = contactController->getContactFromModel(request.from_user_idValue());
+                        if(contact.isValid()){
+                            m_contact = contact;
+                            ui->rightStackedWidget->setCurrentWidget(ui->rightStackedWidgetpage1);
+                            ui->rightStackedWidgetpage1->show();
+                            userInfoWidget->setSelectedContact(m_contact);
+                        }else{
+                            ui->rightStackedWidget->setCurrentWidget(ui->rightStackedWidgetpage1);
+                            ui->rightStackedWidgetpage1->show();
+                            userInfoWidget->setNewFriend(request);
+                        }
+                    } else {
+                        ui->rightStackedWidgetpage1->hide();
+                    }
+                }
+                else {
+                    // 其他节点（如父节点、公众号等）不处理，隐藏右侧面板
                     ui->rightStackedWidgetpage1->hide();
                 }
             });
@@ -644,7 +700,7 @@ void WeChatWidget::on_contactsToolButton_clicked()
     if(!contactTreeView->getSelectedContact().isValid())
         ui->rightStackedWidgetpage1->hide();
     contactController->getAllContacts();
-
+    contactController->loadFriendRequests();
 }
 
 void WeChatWidget::on_collectionToolButton_clicked()

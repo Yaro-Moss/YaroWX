@@ -9,8 +9,9 @@ const char* DatabaseSchema::TABLE_GROUPS = "groups";
 const char* DatabaseSchema::TABLE_CONVERSATIONS = "conversations";
 const char* DatabaseSchema::TABLE_MESSAGES = "messages";
 const char* DatabaseSchema::TABLE_MEDIA_CACHE = "media_cache";
-const char* DatabaseSchema::TABLE_LOCAL_MOMENT = "local_moment";          
-const char* DatabaseSchema::TABLE_LOCAL_MOMENT_INTERACT = "local_moment_interact"; 
+const char* DatabaseSchema::TABLE_LOCAL_MOMENT = "local_moment";
+const char* DatabaseSchema::TABLE_LOCAL_MOMENT_INTERACT = "local_moment_interact";
+const char* DatabaseSchema::TABLE_FRIEND_REQUESTS = "friend_requests";
 
 /**
  * @brief 获取创建"用户表"的SQL语句
@@ -228,6 +229,29 @@ QString DatabaseSchema::getCreateTableLocalMomentInteract() {
 }
 
 /**
+ * @brief 获取好友请求表创建语句
+ */
+QString DatabaseSchema::getCreateTableFriendRequests() {
+    return R"(
+        CREATE TABLE IF NOT EXISTS friend_requests (
+            -- 服务端返回字段（严格匹配）
+            id INTEGER PRIMARY KEY,                     -- 申请ID
+            from_user_id INTEGER NOT NULL,              -- 申请人ID
+            message TEXT,                               -- 申请附言
+            status INTEGER NOT NULL DEFAULT 0,          -- 0:待处理 1:已同意 2:已拒绝
+            created_at INTEGER,                         -- 申请发起时间戳（Unix秒数）
+            from_nickname TEXT,                         -- 申请人昵称
+            from_avatar TEXT,                           -- 申请人头像URL
+            from_account TEXT,                          -- 申请人账号
+
+            -- 客户端本地扩展字段（仅用于 UI 状态）
+            is_read INTEGER DEFAULT 0,                  -- 0:未读 1:已读
+            local_processed INTEGER DEFAULT 0           -- 0:未处理 1:已处理（防重复）
+        )
+    )";
+}
+
+/**
  * @brief 获取创建消息表触发器的SQL语句
  * 用于在插入、更新、删除消息时自动更新会话的最后消息
  */
@@ -385,5 +409,11 @@ QString DatabaseSchema::getCreateIndexes() {
         CREATE INDEX IF NOT EXISTS idx_local_moment_deleted ON local_moment(is_deleted);
         CREATE INDEX IF NOT EXISTS idx_local_moment_interact_moment ON local_moment_interact(moment_id);
         CREATE INDEX IF NOT EXISTS idx_local_moment_interact_time ON local_moment_interact(local_update_time DESC);
-    )";
+
+        -- 好友申请表索引
+        CREATE INDEX IF NOT EXISTS idx_friend_requests_status ON friend_requests(status);
+        CREATE INDEX IF NOT EXISTS idx_friend_requests_is_read ON friend_requests(is_read);
+        CREATE INDEX IF NOT EXISTS idx_friend_requests_created ON friend_requests(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_friend_requests_from_user ON friend_requests(from_user_id);
+)";
 }

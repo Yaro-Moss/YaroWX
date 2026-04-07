@@ -17,6 +17,13 @@ AddFriendRequestDialog::AddFriendRequestDialog(ContactController *contactControl
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setMouseTracking(true);
+
+}
+
+void AddFriendRequestDialog::setRequestMode(){
+    requestMode = true;
+    ui->widget_8->hide();
+    ui->titleLabel->setText("通过好友申请");
 }
 
 AddFriendRequestDialog::~AddFriendRequestDialog()
@@ -93,7 +100,7 @@ void AddFriendRequestDialog::on_confirmButton_clicked()
     QString tags = ui->tagLineEdit->text();
 
     // 2. 判空校验：
-    if (inputText.isEmpty()) {
+    if (!requestMode && inputText.isEmpty()) {
         QMessageBox::warning(
             this,
             tr("警告"),
@@ -103,7 +110,7 @@ void AddFriendRequestDialog::on_confirmButton_clicked()
     }
 
     const int maxLength = 100;
-    if (inputText.length() > maxLength) {
+    if (!requestMode && inputText.length() > maxLength) {
         QMessageBox::warning(
             this,
             tr("警告"),
@@ -112,18 +119,29 @@ void AddFriendRequestDialog::on_confirmButton_clicked()
         return;
     }
 
-    qDebug() << "好友申请招呼内容：" << inputText;
     QString errerMsg = "";
     qint64 outRequestId;
-    m_contactController->sendFriendRequest(errerMsg,
-                                           to_user_id,
-                                           outRequestId,
-                                           inputText,
-                                           remark,
-                                           tags,
-                                           source);
 
-    if(!errerMsg.isEmpty())
-        QMessageBox::critical(this, "错误", errerMsg);
+    if(!requestMode){
+        m_contactController->sendFriendRequest(errerMsg,
+                                               to_user_id,
+                                               outRequestId,
+                                               inputText,
+                                               remark,
+                                               tags,
+                                               source);
+
+        if(!errerMsg.isEmpty())
+            QMessageBox::critical(this, "错误", errerMsg);
+    }else{
+        m_contactController->processFriendRequest(m_requestId,
+                                                  true,
+                                                  nullptr,
+                                                  remark,
+                                                  tags,
+                                                  "",
+                                                  "对方添加自己");
+    }
+
     this->accept();
 }

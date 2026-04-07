@@ -17,6 +17,9 @@ public:
     explicit AddFriendRequestDialog(ContactController * contactController, QWidget *parent = nullptr);
     ~AddFriendRequestDialog();
     void setToUserId(qint64 id){to_user_id = id;}
+    void setRequestId(qint64 requestId){m_requestId = requestId;}
+    void setRequestMode();
+
 protected:
     void paintEvent(QPaintEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override;
@@ -38,6 +41,9 @@ private:
     bool m_isDragging;          // 标记是否正在拖动窗口
     QPoint m_dragStartPos;      // 鼠标按下时相对于窗口的位置
     int m_titleBarHeight;       // 顶部可拖动区域的高度
+
+    bool requestMode = false;
+    qint64 m_requestId = -1;
 };
 
 #endif // ADDFRIENDREQUESTDIALOG_H

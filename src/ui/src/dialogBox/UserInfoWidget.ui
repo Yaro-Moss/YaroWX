@@ -337,35 +337,42 @@ color: rgb(151, 151, 151);</string>
             </size>
            </property>
            <property name="styleSheet">
-            <string notr="true">QToolButton{
-background-color: transparent; /* 透明背景 */
-border: none; /* 无边框 */
-font: 16pt &quot;微软雅黑&quot;;
-padding: 0px; /* 文本内边距0 */
-vertical-align: top; /* 文本顶部对齐 */
-    }
+            <string notr="true">QToolButton {
+    background-color: transparent;  /* 透明背景 */
+    border: none;                   /* 无边框 */
+    font: 16pt &quot;微软雅黑&quot;;
+    padding: 0px;                   /* 文本内边距0 */
+    text-align: center;             /* 文本居中 */
+    border-radius: 4px;             /* 圆角4像素 */
+}
 
- QToolButton:hover {
-        background-color:rgb(230,230,230);  /* 悬浮时灰色背景（可调整色值） */
-    }
-    QToolButton:pressed {
-        background-color: rgb(220,220,220);  /* 按下时稍深灰色（可选） */
-    }</string>
+QToolButton:hover {
+    background-color: rgb(230,230,230);  /* 悬浮时灰色背景 */
+    border-radius: 4px;                  /* 保持圆角一致 */
+}
+
+QToolButton:pressed {
+    background-color: rgb(220,220,220);  /* 按下时稍深灰色 */
+    border-radius: 4px;                  /* 保持圆角一致 */
+}</string>
            </property>
            <property name="text">
             <string>...</string>
            </property>
            <property name="iconSize">
             <size>
-             <width>3</width>
-             <height>11</height>
+             <width>0</width>
+             <height>0</height>
             </size>
            </property>
            <property name="popupMode">
-            <enum>QToolButton::ToolButtonPopupMode::DelayedPopup</enum>
+            <enum>QToolButton::ToolButtonPopupMode::InstantPopup</enum>
            </property>
            <property name="toolButtonStyle">
             <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
+           </property>
+           <property name="autoRaise">
+            <bool>false</bool>
            </property>
           </widget>
          </item>

@@ -37,6 +37,10 @@ public:
     QString processRequestUrl() const;
     int maxRetry() const;
     QString dataSavePath() const;
+    QString deleteFriendURL()const;
+    QString updateFriendURL()const;
+    QString getFriendURL()const;
+
 
     // 保存配置
     void saveConfig();

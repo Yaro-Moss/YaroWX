@@ -36,6 +36,7 @@ AddFriendDialog::AddFriendDialog(ContactController *contactController, QWidget *
                 this->resize(346,500);
             }else{
                 ui->stackedWidget->setCurrentIndex(0);
+                strangerWidget->setMediaDialog(m_mediaDialog);
                 strangerWidget->updateUser(Contacts[0].user);
                 strangerWidget->show();
             }

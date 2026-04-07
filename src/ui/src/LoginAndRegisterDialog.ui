@@ -214,7 +214,7 @@ margin: 0px; /* 外边距 */
                <string/>
               </property>
               <property name="pixmap">
-               <pixmap resource="../res/icon.qrc">:/a/image/二维码.png</pixmap>
+               <pixmap resource="../res/icon.qrc">:/a/image/QRCode.png</pixmap>
               </property>
               <property name="scaledContents">
                <bool>true</bool>
