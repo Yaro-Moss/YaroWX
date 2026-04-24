@@ -22,6 +22,7 @@ public:
     // 异步操作
     void loadConversations();
     void createSingleChat(const Contact &contact);
+    void createSingleChat(qint64 userId);  // 新增：只传 userId 的版本
     void createGroupChat(qint64 groupId);
 
     // 菜单操作

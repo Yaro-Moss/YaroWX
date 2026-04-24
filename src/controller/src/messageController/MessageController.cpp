@@ -449,8 +449,8 @@ void MessageController::onNewMessageReceived(const QJsonObject& message)
 
         // 创建单聊/群聊
         if (chatType == 0) {
-            Contact cont = m_contactController->getContactFromModel(fromUserId);
-            m_conversationController->createSingleChat(cont);
+            // 改进：不依赖模型，直接传 user_id 让 createSingleChat 自己处理
+            m_conversationController->createSingleChat(fromUserId);
         } else {
             m_conversationController->createGroupChat(targetId);
         }

@@ -132,6 +132,95 @@ void ConversationController::createSingleChat(const Contact &contact)
     watcher->setFuture(future);
 }
 
+// 创建单聊会话 - 只传 userId 的版本（更健壮，不依赖模型）
+void ConversationController::createSingleChat(qint64 userId)
+{
+    QFutureWatcher<Conversation> *watcher = new QFutureWatcher<Conversation>(this);
+    connect(watcher, &QFutureWatcher<Conversation>::finished, this, [this, watcher, userId]() {
+        Conversation conv = watcher->result();
+        if (conv.isValid()) {
+            // 如果模型中没有此会话，则添加
+            if (m_chatListModel->findConversationIndex(conv.conversation_idValue()) == -1) {
+                m_chatListModel->addConversation(conv);
+            }
+            emit createChatSuccess(conv.conversation_idValue());
+        } else {
+            qWarning() << "创建单聊会话失败，userId:" << userId;
+        }
+        watcher->deleteLater();
+    });
+
+    QFuture<Conversation> future = QtConcurrent::run([userId]() -> Conversation {
+        Orm orm;
+
+        // 1. 检查是否已存在与这个用户的单聊会话（type=0）
+        auto existing = orm.findWhere<Conversation>(
+            "user_id = ? AND type = 0", {userId}
+            );
+        if (!existing.isEmpty()) {
+            return existing.first();   // 已存在，直接返回
+        }
+
+        // 2. 不存在则创建新会话
+        Conversation conv;
+        conv.setuser_id(userId);
+        conv.settype(0);
+        
+        // 尝试从数据库获取联系人信息来填充会话
+        QString title = QString("用户%1").arg(userId);  // 默认标题
+        auto contactOpt = orm.findById<Contact>(userId);
+        if (contactOpt.has_value()) {
+            // 找到了联系人
+            Contact contact = contactOpt.value();
+            title = contact.remark_nameValue();
+            if (title.isEmpty() && contact.user.isValid()) {
+                title = contact.user.nicknameValue();
+                conv.setavatar(contact.user.avatar());
+                conv.setavatar_local_path(contact.user.avatar_local_path());
+            }
+        } else {
+            // 联系人不存在，先创建一个最小的联系人记录
+            Contact newContact;
+            newContact.setuser_id(userId);
+            if (orm.insert(newContact)) {
+                qDebug() << "自动添加联系人成功 (createSingleChat by userId)";
+            } else {
+                QSqlError err = orm.lastError();
+                if (err.isValid())
+                    qDebug() << "插入联系人失败：" << err.text();
+                qWarning() << "自动添加联系人失败，无法创建会话";
+                return Conversation();
+            }
+            // 再尝试获取 User 信息
+            auto userOpt = orm.findById<User>(userId);
+            if (userOpt) {
+                conv.setavatar(userOpt->avatar());
+                conv.setavatar_local_path(userOpt->avatar_local_path());
+                title = userOpt->nicknameValue();
+                if (title.isEmpty()) {
+                    title = QString("用户%1").arg(userId);
+                }
+            }
+        }
+        
+        conv.settitle(title);
+        conv.setunread_count(0);
+        conv.setis_top(0);
+
+        if (orm.insert(conv)) {
+            return conv;
+        }
+        QSqlError err = orm.lastError();
+        if (err.isValid()) {
+            qDebug() << "插入会话失败：" << err.text();
+        } else {
+            qDebug() << "未找到记录";
+        }
+        return Conversation();  // 无效会话
+    });
+    watcher->setFuture(future);
+}
+
 // 创建群聊会话
 void ConversationController::createGroupChat(qint64 groupId)
 {
