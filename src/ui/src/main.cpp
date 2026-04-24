@@ -14,9 +14,8 @@
 #include "ThumbnailResourceManager.h"
 #include <QMessageBox>
 #include "LoginAndRegisterDialog.h"
-#include "TestWidget.h"
 #include "network.h"
-
+#include "WebSocketManager.h"
 
 
 int main(int argc, char *argv[])
@@ -57,50 +56,29 @@ int main(int argc, char *argv[])
     qRegisterMetaType<MomentLikeInfo>("MomentLikeInfo");
     qRegisterMetaType<MomentCommentInfo>("MomentCommentInfo");
 
-    Network *network = new Network();
+    auto network = std::make_unique<Network>();
     LoginAndRegisterDialog loginAndRegisterDialog(network->loginManager());
+    auto initController = std::make_unique<DatabaseInitializationController>(network.get());
+    auto appInit = std::make_unique<AppInitialize>(initController.get());
+    auto appController = std::make_unique<AppController>(network.get());
+
+
     if(loginAndRegisterDialog.exec() == QDialog::Accepted){
         qDebug()<<"登录成功";
     }else {
         return app.exec();
     }
 
-    DatabaseInitializationController* initController = new DatabaseInitializationController(network);
-    AppInitialize* appInit = new AppInitialize(initController);
-
-    AppController* appController = nullptr;
-    WeChatWidget* wechatWidget = nullptr;
-
-    TestWidget *testWidget;//测试
-
-    QObject::connect(appInit, &AppInitialize::isInited, &app, [&](){
-        appController = new AppController(network);
-
-        // 测试----------------------------------------
-        testWidget = new TestWidget(appController);
-        testWidget->show();
-        // --------------------------------------------
-
-
-        wechatWidget = new WeChatWidget(appController);
+    std::unique_ptr<WeChatWidget> wechatWidget;
+    QObject::connect(appInit.get(), &AppInitialize::isInited, &app, [&](){
+        wechatWidget = std::make_unique<WeChatWidget>(appController.get());
         wechatWidget->show();
-    });
+        WebSocketManager::instance()->connect();
 
+    });
     appInit->initialize();
 
-
-
-
-
-
     int result = app.exec();
-    delete wechatWidget;
-    delete appController;
-    delete appInit;
-    delete initController;
-    delete testWidget;
-    delete network;
-
     // 显式清理ThumbnailResourceManager,防止QGuiApplication 销毁后还在处理 QPixmap，造成崩溃
     ThumbnailResourceManager::cleanup();
 

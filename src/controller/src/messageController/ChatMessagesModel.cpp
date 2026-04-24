@@ -192,6 +192,7 @@ void ChatMessagesModel::addMessage(const Message &message)
     m_messages.insert(id, message);
     m_messageIds.insert(newRow, id);
     endInsertRows();
+    emit addMsg(newRow);
 }
 
 void ChatMessagesModel::removeMessage(int row)

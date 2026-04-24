@@ -7,13 +7,13 @@
     <x>0</x>
     <y>0</y>
     <width>346</width>
-    <height>475</height>
+    <height>470</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
     <width>346</width>
-    <height>475</height>
+    <height>470</height>
    </size>
   </property>
   <property name="maximumSize">
@@ -45,7 +45,7 @@ background-color: rgb(250, 250, 250);
     <number>0</number>
    </property>
    <property name="bottomMargin">
-    <number>40</number>
+    <number>25</number>
    </property>
    <item alignment="Qt::AlignmentFlag::AlignTop">
     <widget class="QWidget" name="widget" native="true">

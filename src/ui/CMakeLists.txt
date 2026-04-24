@@ -78,7 +78,6 @@ target_link_libraries(YaroWX PRIVATE
     common
     controller
     media
-    test
     network
 )
 

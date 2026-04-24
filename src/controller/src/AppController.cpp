@@ -10,6 +10,8 @@ AppController::AppController(Network *network, QObject *parent)
     m_messageController = new MessageController(this);
     m_contactController = new ContactController(network, this);
     m_localMomentController = new LocalMomentController(this);
+    m_messageController->setConversationController(m_conversationController);
+    m_messageController->setContactController(m_contactController);
 }
 
 AppController::~AppController(){

@@ -14,6 +14,8 @@ class ImageProcessor;
 class ChatMessagesModel;
 class FileCopyProcessor;
 class VideoProcessor;
+class ConversationController;
+class ContactController;
 
 class MessageController : public QObject
 {
@@ -28,6 +30,8 @@ public:
     // 设置当前会话和用户
     void setCurrentConversation(Conversation conversation);
     void setCurrentLoginUser(const Contact &user);
+    void setConversationController(ConversationController* controller);
+    void setContactController(ContactController* contactController);
 
     // 发送消息（UI 调用）
     Q_INVOKABLE void sendTextMessage(const QString& content);
@@ -54,29 +58,52 @@ public:
     Q_INVOKABLE void handleDelete(const Message &message);
 
 signals:
-    void send(const QVector<Message>& recentMessages);  // 临时测试
     void mediaItemsLoaded(const QList<MediaItem>& items);
     void messageSaved();
+    void uploadFailed(qint64 conversationId, qint64 tempId, const QString& error);
+    void sendError(const QString& error);
+    void messageSendFailed(qint64 localId, const QString& error);
+
+public slots:
+    void onNewMessageReceived(const QJsonObject& message);
+    void onMessageAck(qint64 localId, bool success);
+    void onMessageSendFailed(qint64 localId, const QString& error);
+    void onDownloadRequested(qint64 messageId);
 
 private slots:
-
     void sendImageMessage(const qint64 conversationId, const QString &originalImagePath, const QString &thumbnailPath, bool success);
     void sendVideoMessage(qint64 conversationId, const QString &originalPath, const QString &thumbnailPath, bool success);
     void sendFileMessage(const qint64 conversationId, bool success, const QString &sourcePath, const QString &targetPath, const QString &errorMessage);
 
 private:
     // 辅助方法
-    Message createMessage(const Conversation &conversation, MessageType type,
+    void sendMediaMessageInternal(
+        int msgType,                    // 1:图片 2:视频 3:文件 4:语音
+        const Conversation& conv,
+        const QString& localFilePath,
+        const QString& thumbnailPath,   // 可为空
+        const QString& displayContent,
+        qint64 fileSize,
+        int duration = 0                // 仅音视频有效
+        );
+    Message createMessage(const Conversation &conversation,
+                          MessageType type,
                           const QString& content = QString(),
                           const QString& filePath = QString(),
                           qint64 fileSize = 0,
                           int duration = 0,
                           const QString& thumbnailPath = QString());
     void connectSignals();
-    void saveMessage(const Message& msg);  // 异步保存到数据库
+    void saveMessage(const Message& msg);
     qint64 generateUniqueMessageId();
+    void removePendingMessage(qint64 localMessageId, bool removeFromModel);
 
+    void updateMessageLocalPath(qint64 msgId, const QString& localPath);
+
+    ConversationController *m_conversationController = nullptr;
+    ContactController* m_contactController = nullptr;
     ChatMessagesModel* m_messagesModel;
+
     Conversation m_currentConversation;
     Contact m_currentLoginUser;
     int currentOffset;  // 已加载的消息数量
@@ -84,6 +111,8 @@ private:
     ImageProcessor* imageProcessor;
     FileCopyProcessor* fileCopyProcessor;
     VideoProcessor* videoProcessor;
+
+    QMap<qint64, Message> m_pendingMessages;
 };
 
 #endif // MESSAGECONTROLLER_H

@@ -56,9 +56,6 @@ public:
                               const QString& source = QString(),
                               int isStarred = 0);
 signals:
-    void friendRequestsLoaded();                   // 加载完成
-    void friendRequestProcessed(qint64 requestId, bool success);
-
     void contactsLoaded();              // 联系人列表加载完成
     void contactUpdated(qint64 userId); // 某个联系人被更新
     void contactRemoved(qint64 userId); // 某个联系人被删除

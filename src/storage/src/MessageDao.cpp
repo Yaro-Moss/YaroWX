@@ -33,6 +33,8 @@ QList<Message> MessageDao::fetchMessages(qint64 conversationId, int limit, int o
             m.duration,
             m.thumbnail_path,
             m.msg_time,
+            m.thumb_download_status,
+            m.file_download_status,
             CASE WHEN c.user_id IS NOT NULL THEN c.remark_name ELSE u.nickname END AS senderName,
             u.avatar_local_path AS avatar
         FROM messages m
@@ -65,7 +67,8 @@ QList<Message> MessageDao::fetchMessages(qint64 conversationId, int limit, int o
         msg.setduration(query.value("duration").toInt());
         msg.setthumbnail_path(query.value("thumbnail_path").toString());
         msg.setmsg_time(query.value("msg_time").toLongLong());
-
+        msg.setthumb_download_status(query.value("thumb_download_status").toInt());
+        msg.setfile_download_status(query.value("file_download_status").toInt());
         msg.setSenderName(query.value("senderName").toString());
         msg.setAvatar(query.value("avatar").toString());
 

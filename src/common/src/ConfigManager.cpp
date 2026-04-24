@@ -3,6 +3,31 @@
 #include <QDir>
 #include <QFile>
 #include <QDateTime>
+#include <QTextStream>
+
+static QString joinUrl(const QString& base, const QString& rel)
+{
+    QString relPath = rel;
+    if (relPath.startsWith("http://", Qt::CaseInsensitive) ||
+        relPath.startsWith("https://", Qt::CaseInsensitive)) {
+        return relPath;
+    }
+    if (relPath.startsWith('/')) {
+        relPath = relPath.mid(1);
+    }
+    if (base.endsWith('/')) {
+        return base + relPath;
+    } else {
+        return base + '/' + relPath;
+    }
+}
+
+static QString buildUrl(const QSettings* settings, const QString& key,
+                        const QString& defaultRelPath, const QString& baseUrl)
+{
+    QString path = settings ? settings->value(key, defaultRelPath).toString() : defaultRelPath;
+    return joinUrl(baseUrl, path);
+}
 
 ConfigManager::ConfigManager(QObject* parent)
     : QObject(parent)
@@ -27,11 +52,8 @@ ConfigManager* ConfigManager::instance()
 
 void ConfigManager::initConfig()
 {
-    // 获取应用配置目录 (跨平台)
     QString configDir = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     QDir().mkpath(configDir);
-
-    // 配置文件路径
     QString configPath = configDir + "/config.ini";
 
     if (!QFile::exists(configPath)) {
@@ -56,8 +78,21 @@ void ConfigManager::createDefaultConfig(const QString& configPath)
         out << "Version=1.0.0\n\n";
 
         out << "[Network]\n";
+        out << "baseUrl=http://localhost:8080\n";
         out << "WebSocketUrl=ws://localhost:8080/chat\n";
-        out << "LoginUrl=http://localhost:8080/api/v1/login\n";
+        out << "LoginUrl=/api/v1/login\n";
+        out << "RegisterUrl=/api/v1/register\n";
+        out << "GetAllFriendUrl=/api/v1/friend\n";
+        out << "GetProfileUrl=/api/user/profile\n";
+        out << "GetGroupsAddMembersUrl=/api/user/groupsAddMembers\n";
+        out << "SearchUserUrl=/api/user/search\n";
+        out << "FriendRequestUrl=/api/friend/request\n";
+        out << "PendingRequestsUrl=/api/friend/request/pending\n";
+        out << "processRequestUrl=/api/friend/request/%1\n";
+        out << "getFriendURL=/api/v1/grtfriend/%1\n";
+        out << "updateFriendURL=/api/v1/putfriend/%1\n";
+        out << "deleteFriendURL=/api/v1/delfriend/%1\n";
+        out << "UploadUrl=/api/v1/upload\n";   // 注意：默认改为 /api/v1/upload
         out << "MaxRetry=5\n\n";
 
         out << "[Data]\n";
@@ -65,6 +100,12 @@ void ConfigManager::createDefaultConfig(const QString& configPath)
 
         configFile.close();
     }
+}
+
+QString ConfigManager::baseUrl() const
+{
+    if (!m_settings) return "http://localhost:8080";
+    return m_settings->value("Network/baseUrl", "http://localhost:8080").toString();
 }
 
 QString ConfigManager::webSocketUrl() const
@@ -75,65 +116,76 @@ QString ConfigManager::webSocketUrl() const
 
 QString ConfigManager::loginUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/login";
-    return m_settings->value("Network/LoginUrl", "http://localhost:8080/api/v1/login").toString();
+    return buildUrl(m_settings, "Network/LoginUrl", "/api/v1/login", baseUrl());
 }
 
 QString ConfigManager::registerUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/register";
-    return m_settings->value("Network/RegisterUrl", "http://localhost:8080/api/v1/register").toString();
+    return buildUrl(m_settings, "Network/RegisterUrl", "/api/v1/register", baseUrl());
 }
 
 QString ConfigManager::getAllFriendUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/friend";
-    return m_settings->value("Network/GetAllFriendUrl", "http://localhost:8080/api/v1/friend").toString();
+    return buildUrl(m_settings, "Network/GetAllFriendUrl", "/api/v1/friend", baseUrl());
 }
 
 QString ConfigManager::getProfileUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/user/profile";
-    return m_settings->value("Network/GetProfileUrl", "http://localhost:8080/api/user/profile").toString();
+    return buildUrl(m_settings, "Network/GetProfileUrl", "/api/user/profile", baseUrl());
 }
 
 QString ConfigManager::getGroupsAddMembersUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/user/groupsAddMembers";
-    return m_settings->value("Network/GetGroupsAddMembersUrl", "http://localhost:8080/api/user/groupsAddMembers").toString();
+    return buildUrl(m_settings, "Network/GetGroupsAddMembersUrl", "/api/user/groupsAddMembers", baseUrl());
 }
 
-QString ConfigManager::getSearchUserUrl()const
+QString ConfigManager::getSearchUserUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/user/search";
-    return m_settings->value("Network/SearchUserUrl", "http://localhost:8080/api/user/search").toString();
-
+    return buildUrl(m_settings, "Network/SearchUserUrl", "/api/user/search", baseUrl());
 }
 
-QString ConfigManager::getFriendRequestUrl()const
+QString ConfigManager::getFriendRequestUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/friend/request";
-    return m_settings->value("Network/FriendRequestUrl", "http://192.168.107.119:8080/api/friend/request").toString();
+    return buildUrl(m_settings, "Network/FriendRequestUrl", "/api/friend/request", baseUrl());
 }
 
-QString ConfigManager::getFriendURL()const
+QString ConfigManager::getPendingRequestsUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/grtfriend/%1";
-    return m_settings->value("Network/getFriendURL", "http://localhost:8080/api/v1/grtfriend/%1").toString();
+    return buildUrl(m_settings, "Network/PendingRequestsUrl", "/api/friend/request/pending", baseUrl());
 }
 
-QString ConfigManager::updateFriendURL()const
+QString ConfigManager::processRequestUrl() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/putfriend/1%";
-    return m_settings->value("Network/updateFriendURL", "http://localhost:8080/api/v1/putfriend/1%").toString();
+    QString relPath = m_settings ? m_settings->value("Network/processRequestUrl", "/api/friend/request/%1").toString()
+                                 : "/api/friend/request/%1";
+    return joinUrl(baseUrl(), relPath);
 }
 
-QString ConfigManager::deleteFriendURL()const
+QString ConfigManager::getFriendURL() const
 {
-    if (!m_settings) return "http://localhost:8080/api/v1/delfriend/1%";
-    return m_settings->value("Network/deleteFriendURL", "http://192.168.107.119:8080/api/v1/delfriend/1%").toString();
+    QString relPath = m_settings ? m_settings->value("Network/getFriendURL", "/api/v1/grtfriend/%1").toString()
+                                 : "/api/v1/grtfriend/%1";
+    return joinUrl(baseUrl(), relPath);
 }
 
+QString ConfigManager::updateFriendURL() const
+{
+    QString relPath = m_settings ? m_settings->value("Network/updateFriendURL", "/api/v1/putfriend/%1").toString()
+                                 : "/api/v1/putfriend/%1";
+    return joinUrl(baseUrl(), relPath);
+}
+
+QString ConfigManager::deleteFriendURL() const
+{
+    QString relPath = m_settings ? m_settings->value("Network/deleteFriendURL", "/api/v1/delfriend/%1").toString()
+                                 : "/api/v1/delfriend/%1";
+    return joinUrl(baseUrl(), relPath);
+}
+
+QString ConfigManager::getUploadUrl() const
+{
+    return buildUrl(m_settings, "Network/UploadUrl", "/api/v1/upload", baseUrl());
+}
 
 int ConfigManager::maxRetry() const
 {
@@ -143,30 +195,18 @@ int ConfigManager::maxRetry() const
 
 QString ConfigManager::dataSavePath() const
 {
-    if (!m_settings) return QDir::homePath() + "/YaroWX/data" + "/user_" + currentLoginUserID ;
-    return m_settings->value("Data/SavePath", QDir::homePath() + "/YaroWX/data").toString()
-           + "/user_"+currentLoginUserID;
+    QString basePath;
+    if (!m_settings) {
+        basePath = QDir::homePath() + "/YaroWX/data";
+    } else {
+        basePath = m_settings->value("Data/SavePath", QDir::homePath() + "/YaroWX/data").toString();
+    }
+    return basePath + "/user_" + currentLoginUserID;
 }
-
-
-
-QString ConfigManager::getPendingRequestsUrl() const
-{
-    if (!m_settings) return "http://localhost:8080/api/friend/request/pending";
-    return m_settings->value("Network/PendingRequestsUrl", "http://localhost:8080/api/friend/request/pending").toString();
-}
-
-QString ConfigManager::processRequestUrl() const
-{
-    if (!m_settings) return "http://localhost:8080/api/friend/request/{1%}";
-    return m_settings->value("Network/processRequestUrl", "http://localhost:8080/api/friend/request/{1%}").toString();
-}
-
 
 void ConfigManager::saveConfig()
 {
     if (m_settings) {
-        m_settings->sync(); // 确保配置保存到磁盘
+        m_settings->sync();
     }
 }
-

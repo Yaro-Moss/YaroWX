@@ -78,12 +78,9 @@ void LoginManager::onLoginReplyFinished()
         ConfigManager *configManager = ConfigManager::instance();
         configManager->setCurrentLoginUserID(QString::number(m_userId));
 
-        qDebug() << "登录成功" << m_userId;
-        qDebug() << "nickname" << m_nickname;
-
         emit loginSuccess();       // 通知登录成功
         saveTokenToStorage();      // 存储 token
-        WebSocketManager::instance()->connect(m_token);  // 连接 WebSocket
+        WebSocketManager::instance()->setTokent(m_token);
 
     } else {
         QString errorMsg = obj["error"].toString("登录失败");

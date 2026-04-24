@@ -8,7 +8,7 @@
 
 ImageProcessor::ImageProcessor(QObject *parent)
     : QObject(parent)
-    , m_thumbnailSize(200, 300)
+    , m_thumbnailSize(120, 180)
 {
     ConfigManager* configManager = ConfigManager::instance();
     QDir baseDir(configManager->dataSavePath());

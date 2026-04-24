@@ -2,7 +2,6 @@
 #include "Contact.h"
 #include "DatabaseInitializer.h"
 #include "NetworkDataLoader.h"
-#include "LoginManager.h"
 #include "ORM.h"
 #include "User.h"
 #include <QDebug>
@@ -22,7 +21,7 @@ DatabaseInitializationController::DatabaseInitializationController(Network * net
     , databaseInitializer(new DatabaseInitializer(this))
     , m_networkLoader(network->networkDataLoader())
     , m_loginManager(network->loginManager())
-    , m_currentUserId(0)   // 初始化当前用户ID为0
+    , m_currentUserId(0)
 {}
 
 DatabaseInitializationController::~DatabaseInitializationController()

@@ -116,7 +116,7 @@ QPixmap ThumbnailResourceManager::processOriginalImage(const QString &resourcePa
 
 QPixmap ThumbnailResourceManager::createDefaultThumbnail(const QSize& size, MediaType type, const QString& text)
 {
-    QPixmap pixmap(size);
+    QPixmap pixmap(QSize(150,150));
     pixmap.fill(QColor(50, 50, 50)); // 灰色背景
 
     QPainter painter(&pixmap);

@@ -34,6 +34,7 @@
 #include "ChatListDelegate.h"
 #include "ChatMessageDelegate.h"
 #include "AppController.h"
+#include <QMessageBox>
 
 WeChatWidget::WeChatWidget(AppController * appController, QWidget *parent)
     : QWidget(parent)
@@ -143,11 +144,11 @@ void WeChatWidget::initChatList()
                 }
     });
 
-    connect(conversationController, &ConversationController::createSingleChatSuccessfully, this,
-        [this](const Conversation&conversation){
+    connect(conversationController, &ConversationController::createChatSuccess, this,
+        [this](qint64 id){
 
         ChatListModel *m_model = conversationController->chatListModel();
-        QModelIndex index = m_model->getConversationIndex(conversation.conversation_idValue());
+        QModelIndex index = m_model->getConversationIndex(id);
 
         if (index.isValid()) {
             chatListView->setCurrentIndex(index);
@@ -211,9 +212,26 @@ void WeChatWidget::initMessageList()
 
     // 保存消息时刷新会话列表，（最后一条消息和时间。）
     connect(messageController, &MessageController::messageSaved, this, [this](){
-        chatMessageListView->scrollToBottom();
+        // chatMessageListView->scrollToBottom();
         conversationController->loadConversations();
     });
+
+    connect(messageController->messagesModel(), &ChatMessagesModel::addMsg, this, [this](int newRow){
+        if (newRow >= 0) {
+            QModelIndex idx = messageController->messagesModel()->index(newRow, 0);
+            chatMessageListView->scrollTo(idx, QAbstractItemView::PositionAtBottom);
+        }
+    });
+
+    connect(messageController, &MessageController::messageSendFailed, this,
+        [this](qint64 localId, const QString& error){
+        QMessageBox::warning(this, "警告", error);
+    });
+    connect(messageController, &MessageController::uploadFailed, this,
+            [this](qint64 conversationId, qint64 tempId, const QString& error){
+                QMessageBox::warning(this, "警告", error);
+            });
+
 
     // 点击消息时信号处理
     connect(chatMessageDelegate, &ChatMessageDelegate::rightClicked, chatMessageListView,
@@ -249,6 +267,11 @@ void WeChatWidget::initMessageList()
     connect(chatMessageDelegate, &ChatMessageDelegate::voiceClicked, this,
             [this](const QString &voicePath, const qint64 &messageId) {
                 audioPlayer->play(voicePath, messageId);
+            });
+
+    connect(chatMessageDelegate, &ChatMessageDelegate::downloadRequested, this,
+            [this](qint64 messageId) {
+                messageController->onDownloadRequested(messageId);
             });
 
     connect(audioPlayer, &AudioPlayer::playbackStarted, chatMessageListView,

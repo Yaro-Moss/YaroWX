@@ -34,10 +34,11 @@ public:
     void handletoggleReadStatus(qint64 conversationId);
 
     void setCurrentConversationId(qint64 conversationId);
-
+    Conversation getConversationFromModel(qint64 id);
+    qint64 getConversationIdByTarget(int chatType, qint64 targetId);
 signals:
-    void createSingleChatSuccessfully(const Conversation&conversation);
     void messageSave();
+    void createChatSuccess(qint64 id);
 
 private:
     ChatListModel* m_chatListModel;

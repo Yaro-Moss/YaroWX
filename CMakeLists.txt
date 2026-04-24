@@ -58,4 +58,3 @@ add_subdirectory(src/media)
 add_subdirectory(src/controller)
 add_subdirectory(src/ui) 
 
-add_subdirectory(test)

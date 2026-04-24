@@ -7,7 +7,6 @@
 class ConfigManager : public QObject
 {
     Q_OBJECT
-    // 单例禁止拷贝和赋值，符合设计规范
     Q_DISABLE_COPY(ConfigManager)
 
 private:
@@ -15,39 +14,42 @@ private:
     QString currentLoginUserID = "";
 
     explicit ConfigManager(QObject *parent = nullptr);
-
-    // 初始化配置
     void initConfig();
-
     void createDefaultConfig(const QString& configPath);
 
 public:
     static ConfigManager* instance();
 
-    // 配置读取接口
+    // 基础地址
+    QString baseUrl() const;
+
+    // WebSocket 地址（不参与 baseUrl 拼接）
     QString webSocketUrl() const;
+
+    // HTTP API 地址（基于 baseUrl 拼接）
     QString loginUrl() const;
     QString registerUrl() const;
     QString getAllFriendUrl() const;
-    QString getProfileUrl()const;
-    QString getGroupsAddMembersUrl()const;
-    QString getSearchUserUrl()const;
-    QString getFriendRequestUrl()const;
+    QString getProfileUrl() const;
+    QString getGroupsAddMembersUrl() const;
+    QString getSearchUserUrl() const;
+    QString getFriendRequestUrl() const;
     QString getPendingRequestsUrl() const;
-    QString processRequestUrl() const;
+    QString processRequestUrl() const;   // 带 %1 占位符
+    QString getFriendURL() const;        // 带 %1 占位符
+    QString updateFriendURL() const;     // 带 %1 占位符
+    QString deleteFriendURL() const;     // 带 %1 占位符
+    QString uploadUrl() const;           // 可选，原配置中有 UploadUrl
+    QString getUploadUrl() const;        // 获取上传文件 URL
+
+    // 其他配置
     int maxRetry() const;
     QString dataSavePath() const;
-    QString deleteFriendURL()const;
-    QString updateFriendURL()const;
-    QString getFriendURL()const;
 
-
-    // 保存配置
     void saveConfig();
+    void setCurrentLoginUserID(QString id) { currentLoginUserID = id; }
 
     ~ConfigManager() override;
-    void setCurrentLoginUserID(QString id){currentLoginUserID = id;}
-
 };
 
 #endif // CONFIGMANAGER_H

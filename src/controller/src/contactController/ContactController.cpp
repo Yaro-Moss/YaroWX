@@ -540,7 +540,6 @@ void ContactController::syncFriendRequestsToLocalAndModel(const QList<FriendRequ
             Orm orm;
             allRequests = orm.findWhere<FriendRequest>("1=1 ORDER BY created_at DESC");
             m_contactTreeModel->loadFriendRequests(allRequests);
-            emit friendRequestsLoaded();
         } else {
             qWarning() << "同步好友申请到数据库失败";
         }
@@ -636,9 +635,6 @@ void ContactController::processFriendRequest(
         bool success = watcher->result();
         if (success) {
             loadFriendRequests();  // 刷新模型
-            emit friendRequestProcessed(requestId, true);
-        } else {
-            emit friendRequestProcessed(requestId, false);
         }
         if (callback) callback(success);
         watcher->deleteLater();

@@ -144,6 +144,8 @@ QString DatabaseSchema::getCreateTableMessages() {
             duration INTEGER,                            -- 音视频时长（秒）
             thumbnail_path TEXT,                         -- 缩略图路径
             msg_time INTEGER,                            -- 发送/接收时间戳
+            thumb_download_status INTEGER DEFAULT 0,     -- 0未下载 1下载中 2已完成 3失败
+            file_download_status INTEGER DEFAULT 0,      -- 0未下载 1下载中 2已完成 3失败
 
             -- 外键关联
             FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE,

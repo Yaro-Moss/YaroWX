@@ -74,6 +74,7 @@ public:
 signals:
     void currentUserIdChanged();
     void conversationIdChanged();
+    void addMsg(int row);
 
 private:
     static bool lessThan(const Message &a, const Message &b) {

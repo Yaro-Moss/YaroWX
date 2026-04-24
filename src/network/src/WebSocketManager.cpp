@@ -25,7 +25,7 @@ WebSocketManager::WebSocketManager(QObject* parent)
     , m_reconnectTimer(new QTimer(this))
 {
     m_reconnectTimer->setSingleShot(true);
-    QObject::connect(m_reconnectTimer, &QTimer::timeout, this, &WebSocketManager::scheduleReconnect);
+    QObject::connect(m_reconnectTimer, &QTimer::timeout, this, &WebSocketManager::doReconnect);
 }
 
 WebSocketManager::~WebSocketManager()
@@ -33,24 +33,29 @@ WebSocketManager::~WebSocketManager()
     disconnect();
 }
 
-void WebSocketManager::connect(const QString& token)
+void WebSocketManager::setTokent(const QString& token)
+{
+    m_token = token;
+}
+
+void WebSocketManager::connect()
 {
     if (m_webSocket) {
         if (m_webSocket->state() == QAbstractSocket::ConnectedState) {
             qDebug() << "WebSocket already connected";
             return;
         }
+        m_webSocket->disconnect();
         m_webSocket->deleteLater();
         m_webSocket = nullptr;
     }
 
-    m_token = token;
     m_webSocket = new QWebSocket();
 
-    QObject::connect(m_webSocket, &QWebSocket::connected, this, &WebSocketManager::onConnected);
-    QObject::connect(m_webSocket, &QWebSocket::disconnected, this, &WebSocketManager::onDisconnected);
-    QObject::connect(m_webSocket, &QWebSocket::errorOccurred, this, &WebSocketManager::onErrorOccurred);
-    QObject::connect(m_webSocket, &QWebSocket::textMessageReceived, this, &WebSocketManager::onTextMessageReceived);
+    QObject::connect(m_webSocket, &QWebSocket::connected, this, &WebSocketManager::onConnected, Qt::UniqueConnection);
+    QObject::connect(m_webSocket, &QWebSocket::disconnected, this, &WebSocketManager::onDisconnected, Qt::UniqueConnection);
+    QObject::connect(m_webSocket, &QWebSocket::errorOccurred, this, &WebSocketManager::onErrorOccurred, Qt::UniqueConnection);
+    QObject::connect(m_webSocket, &QWebSocket::textMessageReceived, this, &WebSocketManager::onTextMessageReceived, Qt::UniqueConnection);
 
     ConfigManager* config = ConfigManager::instance();
     QUrl url(config->webSocketUrl());
@@ -103,18 +108,59 @@ void WebSocketManager::onErrorOccurred(QAbstractSocket::SocketError error)
     emit errorOccurred(errStr);
 }
 
-void WebSocketManager::onTextMessageReceived(const QString& message)
+void WebSocketManager::sendTextMessage(const QString& message)
 {
-    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
-    if (!doc.isObject()) {
-        qWarning() << "Invalid WebSocket message (not JSON object):" << message;
+    if (!m_webSocket) {
+        qWarning() << "发送失败：socket 未创建";
+        emit messageSendFailed(-1, "网络连接有问题");
+        // 主动触发重连
+        if (!m_token.isEmpty() && !m_reconnectTimer->isActive()) {
+            scheduleReconnect();
+        }
+        return;
+    }
+    if (m_webSocket->state() != QAbstractSocket::ConnectedState) {
+        qWarning() << "发送失败：未连接，message:" << message.left(50);
+        emit messageSendFailed(-1, "未连接");
+        // 主动触发重连
+        if (!m_token.isEmpty() && !m_reconnectTimer->isActive()) {
+            scheduleReconnect();
+        }
         return;
     }
 
+    m_webSocket->sendTextMessage(message);
+    qDebug() << "消息已发送：" << message.left(100);
+}
+
+void WebSocketManager::onTextMessageReceived(const QString& message)
+{
+    QJsonDocument doc = QJsonDocument::fromJson(message.toUtf8());
+    if (!doc.isObject()) return;
     QJsonObject obj = doc.object();
     QString type = obj["type"].toString();
 
-    if (type == "friend_request") {
+    if (type == "msg_ack") {
+        qint64 clientTempId = 0;
+        if (obj["client_temp_id"].isDouble()) {
+            clientTempId = obj["client_temp_id"].toVariant().toLongLong();
+        } else if (obj["client_temp_id"].isString()) {
+            clientTempId = obj["client_temp_id"].toString().toLongLong();
+        }
+        int status = obj["status"].toInt();  // 0成功，非0失败
+        if (status == 0) {
+            emit messageAcknowledged(clientTempId, true);
+        } else {
+            QString error = QString("Send failed with status %1").arg(status);
+            emit messageSendFailed(clientTempId, error);
+        }
+    }
+    else if (type == "message_error") {
+        qint64 localId = obj["local_message_id"].toVariant().toLongLong();
+        QString error = obj["error"].toString();
+        emit messageSendFailed(localId, error);
+    }
+    else if (type == "friend_request") {
         QJsonObject data = obj["data"].toObject();
         qint64 requestId = data["request_id"].toVariant().toLongLong();
         qint64 fromUserId = data["from_user_id"].toVariant().toLongLong();
@@ -132,7 +178,11 @@ void WebSocketManager::onTextMessageReceived(const QString& message)
         emit friendRequestProcessed(requestId, false);
     }
     else {
-        qDebug() << "Unhandled WebSocket message type:" << type;
+        if (obj.contains("from_user_id") && obj.contains("chat_type") && obj.contains("content")) {
+            emit newMessageReceived(obj);
+        } else {
+            qDebug() << "Received unknown message without type:" << message;
+        }
     }
 }
 
@@ -143,4 +193,18 @@ void WebSocketManager::scheduleReconnect()
     qDebug() << "Scheduling WebSocket reconnect in" << m_reconnectDelay << "ms";
     m_reconnectTimer->start(m_reconnectDelay);
     m_reconnectDelay = qMin(m_reconnectDelay * 2, 60000);
+}
+
+void WebSocketManager::doReconnect()
+{
+    if (m_token.isEmpty()) {
+        qDebug() << "No token, skip reconnect";
+        return;
+    }
+    if (isConnected()) {
+        qDebug() << "Already connected, skip reconnect";
+        return;
+    }
+    qDebug() << "Attempting to reconnect...";
+    connect();   // 使用保存的 token 重新连接
 }

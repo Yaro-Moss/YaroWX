@@ -4,10 +4,11 @@
 #include <QStyledItemDelegate>
 #include <QPainter>
 #include <QMouseEvent>
+#include <QMap>
 #include "ThumbnailResourceManager.h"
 #include "Message.h"
-class ContactController;
 
+class ContactController;
 
 class ChatMessageDelegate : public QStyledItemDelegate
 {
@@ -15,6 +16,7 @@ class ChatMessageDelegate : public QStyledItemDelegate
 
 public:
     explicit ChatMessageDelegate(QObject *parent = nullptr);
+    ~ChatMessageDelegate();
 
     void paint(QPainter *painter, const QStyleOptionViewItem &option,
                const QModelIndex &index) const override;
@@ -25,20 +27,19 @@ public:
     bool editorEvent(QEvent *event, QAbstractItemModel *model,
                      const QStyleOptionViewItem &option, const QModelIndex &index) override;
 
-    void setContactController(ContactController *contactController){m_contactController=contactController;}
+    void setContactController(ContactController *contactController) { m_contactController = contactController; }
 
 signals:
-    void mediaClicked(const qint64 &msgId, const qint64 &conversationId);
+    void mediaClicked(qint64 msgId, qint64 conversationId);
     void fileClicked(const QString &filePath);
-    void voiceClicked(const QString &voicePath, const qint64 &messageId);
+    void voiceClicked(const QString &voicePath, qint64 messageId);
     void textClicked(const QString &text);
-    void rightClicked(const QPoint& globalPos, const Message &message);
-    void avatarClicked(const qint64 &senderId);
-
+    void rightClicked(const QPoint &globalPos, const Message &message);
+    void avatarClicked(qint64 senderId);
+    void downloadRequested(qint64 messageId);  // 请求下载原文件
 
 private slots:
-    void onMediaLoaded(const QString& resourcePath, const QPixmap& media, MediaType type);
-
+    void onMediaLoaded(const QString &resourcePath, const QPixmap &media, MediaType type);
 
 private:
     // 不同类型消息的绘制方法
@@ -64,22 +65,33 @@ private:
                                     const QRect &bubbleRect,
                                     bool isOwnMessage,
                                     bool isPlaying,
-                                    const qint64 &messageId) const;
+                                    qint64 messageId) const;
     void paintVoiceWaveform(QPainter *painter,
                             const QRect &rect,
                             bool isOwnMessage,
                             bool isPlaying,
-                            const qint64 &messageId) const;
+                            qint64 messageId) const;
     void paintDurationText(QPainter *painter, const QRect &bubbleRect,
                            int duration, bool isOwnMessage) const;
+
+    // 新增：绘制媒体覆盖层（下载/加载/失败）
+    void paintMediaOverlay(QPainter *painter, const QRect &imageRect,
+                           DownloadStatus thumbStatus,
+                           DownloadStatus fileStatus,
+                           qint64 messageId) const;
 
     // 工具方法
     QSize calculateTextSize(const QString &text, const QFont &font, int maxWidth) const;
     QRect getClickableRect(const QStyleOptionViewItem &option, const Message &message,
-                           const bool &isOwn) const;
+                           bool isOwn) const;
     bool handleLeftClick(QMouseEvent *mouseEvent, const QStyleOptionViewItem &option,
                          const QModelIndex &index);
     QRect getAvatarRect(const QStyleOptionViewItem &option, bool isOwn) const;
+
+    // 动画支持
+    void startAnimationForMessage(qint64 messageId);
+    void stopAnimationForMessage(qint64 messageId);
+    void timerEvent(QTimerEvent *event) override;
 
 private:
     // 常量定义
@@ -97,9 +109,15 @@ private:
     static const int ICON_WIDTH = 29;
     static const int ICON_HEIGHT = 40;
 
+    static const int ANIMATION_INTERVAL = 50;   // 动画间隔（毫秒）
+    static const int ARC_STEP = 10;             // 每帧旋转角度
+
     ThumbnailResourceManager *thumbnailManager;
     ContactController *m_contactController;
 
+    // 动画状态（mutable 因为要在 const 方法中修改）
+    mutable QMap<qint64, int> m_animationAngles;   // 消息ID -> 当前角度
+    mutable QMap<qint64, int> m_animationTimers;   // 消息ID -> timerId
 };
 
 #endif // CHATMESSAGEDELEGATE_H

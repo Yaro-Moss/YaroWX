@@ -60,7 +60,7 @@ void ConversationController::createSingleChat(const Contact &contact)
             if (m_chatListModel->findConversationIndex(conv.conversation_idValue()) == -1) {
                 m_chatListModel->addConversation(conv);
             }
-            emit createSingleChatSuccessfully(conv);
+            emit createChatSuccess(conv.conversation_idValue());
         } else {
             qWarning() << "创建单聊会话失败，userId:" << conv.user_id();
         }
@@ -110,6 +110,9 @@ void ConversationController::createSingleChat(const Contact &contact)
             if (orm.insert(newContact)) {
                 qDebug() << "自动添加联系人成功";
             } else {
+                QSqlError err = orm.lastError();
+                if (err.isValid())
+                    qDebug() << "插入失败：" << err.text();
                 qWarning() << "自动添加联系人失败，无法创建会话";
                 return Conversation();
             }
@@ -139,6 +142,7 @@ void ConversationController::createGroupChat(qint64 groupId)
             if (m_chatListModel->findConversationIndex(conv.conversation_idValue()) == -1) {
                 m_chatListModel->addConversation(conv);
             }
+            emit createChatSuccess(conv.conversation_idValue());
         } else {
             qWarning() << "创建群聊会话失败，groupId:" << groupId;
         }
@@ -316,4 +320,33 @@ void ConversationController::setCurrentConversationId(qint64 conversationId)
     if (m_currentConversationId != conversationId) {
         m_currentConversationId = conversationId;
     }
+}
+
+Conversation ConversationController::getConversationFromModel(qint64 id)
+{
+    return m_chatListModel->getConversation(id);
+}
+
+qint64 ConversationController::getConversationIdByTarget(int chatType, qint64 targetId)
+{
+    Orm orm;
+    QString condition;
+    QVariantList params;
+
+    if (chatType == 0) { // 单聊
+        condition = "type = 0 AND user_id = ?";
+        params << targetId;
+    } else if (chatType == 1) { // 群聊
+        condition = "type = 1 AND group_id = ?";
+        params << targetId;
+    } else {
+        qWarning() << "getConversationIdByTarget: invalid chatType" << chatType;
+        return -1;
+    }
+
+    auto conversations = orm.findWhere<Conversation>(condition, params);
+    if (conversations.isEmpty()) {
+        return -1;
+    }
+    return conversations.first().conversation_idValue();
 }
